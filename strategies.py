@@ -16,23 +16,23 @@ class PrintClose(bt.Strategy):
 class MAcrossover(bt.Strategy): 
     def log(self, txt, dt=None):
         dt = dt or self.datas[0].datetime.date(0)
-        print(f'{dt.isoformat()} {txt}') # Comment this line when running optimization
+        # print(f'{dt.isoformat()} {txt}') # Comment this line when running optimization
 
-    def __init__(self):
+    def __init__(self, pfast=20, pslow=50):
         self.dataclose = self.datas[0].close
         
 		# Order variable will contain ongoing order details/status
         self.order = None
 
         # Moving average parameters
-        params = {
-            'pfast': 20,
-            'pslow': 50
+        self.params = {
+            'pfast': pfast,
+            'pslow': pslow
         }
 
         # Instantiate moving averages
-        self.fast_sma = bt.ind.SMA(period=params['pfast'])  # fast moving average
-        self.slow_sma = bt.ind.SMA(period=params['pslow'])  # slow moving average
+        self.fast_sma = bt.ind.SMA(period=self.params['pfast'])  # fast moving average
+        self.slow_sma = bt.ind.SMA(period=self.params['pslow'])  # slow moving average
         self.crossover = bt.ind.CrossOver(self.fast_sma, self.slow_sma)
         
 
