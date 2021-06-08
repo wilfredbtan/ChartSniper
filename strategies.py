@@ -7,9 +7,9 @@ class StochMACD(bt.Strategy):
     lines = ('stochrsi','rsi')
 
     params = (
-        ('macd1', 7),
-        ('macd2', 21),
-        ('macdsig', 5),
+        ('macd1', 12),
+        ('macd2', 26),
+        ('macdsig', 9),
         
         ('stoch_k_period', 3),
         ('stoch_d_period', 3),
@@ -54,20 +54,24 @@ class StochMACD(bt.Strategy):
                                    upperband=self.p.stoch_upperband,
                                    lowerband=self.p.stoch_lowerband)
         
+    def start(self):
+        self.val_start = self.broker.get_cash()
+        logging.info('Starting Portfolio Value: %.2f' % self.broker.getvalue())
+    
+    def stop(self):
+        logging.info('Ending Portfolio Value: %.2f' % self.broker.getvalue())
+        self.roi = (self.broker.get_value() / self.val_start) - 1.0
+        logging.info('ROI:        {:.2f}%'.format(100.0 * self.roi))
+
     def log(self, txt, level=logging.DEBUG, dt=None):
-        # if not self.p.debug:
-        #     return
         dt = dt or self.datas[0].datetime.date(0)
         hh = self.datas[0].datetime.time()
-        # logging.info('%s %s, %s' % (dt.isoformat(), hh, txt))
         logging.log(level, '%s %s, %s' % (dt.isoformat(), hh, txt))
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
             return
 
-        close = self.dataclose[0]
-        
         if order.status in [order.Completed]:
             if order.isbuy():
                 self.log(
@@ -101,9 +105,6 @@ class StochMACD(bt.Strategy):
             self.log('Order Rejected: %s' % order.info.name)
             self.log_trade()
 
-        # Write down: no pending order
-#         self.orders = None
-
     def notify_trade(self, trade):
         if not trade.isclosed:
             return
@@ -111,8 +112,6 @@ class StochMACD(bt.Strategy):
         self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' % (trade.pnl, trade.pnlcomm), level=logging.INFO)
             
     def log_trade(self):
-        # if not self.p.debug:
-            # return
         close = self.dataclose[0]
         self.log('Close, %.2f' % close)
         self.log("ATR: %.2f" % self.atr[0])

@@ -42,13 +42,15 @@ def parse_args(pargs=None):
                               '0.001 -> 0.1%%, 0.01 -> 1%%'))
 
     parser.add_argument('--mult', required=False, action='store',
-                        type=int, default=3,
+                        type=int, default=5,
                         help=('Multiplier when using margin'))
 
     parser.add_argument('--margin', required=False, action='store',
                         type=float, default=1000,
                         help=('Margin required from broker'))
 
+
+    # Single runs
     parser.add_argument('--macd1', required=False, action='store',
                         type=int, default=12,
                         help=('MACD Period 1 value'))
@@ -101,9 +103,16 @@ def parse_args(pargs=None):
                         type=float, default=5.0,
                         help=('ATR Factor for stop price calculation'))
 
-    # parser.add_argument('--debug', required=False, action='store',
-    #                     default=False,
-    #                     help=('If true, logs will be printed out for each op'))
+    parser.add_argument('--plot', '-p', action='store_true',
+                    help='Plot the read data')
+
+    parser.add_argument(
+        '-o', '--optimize',
+        action='store_const',
+        const=True,
+        default=False,
+        help=('Optimizes the strategy over a range of parameters')
+    )
 
     parser.add_argument(
         '-d', '--debug',
