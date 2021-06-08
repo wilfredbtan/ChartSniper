@@ -1,6 +1,6 @@
+import logging
 import backtrader as bt
 from Indicators import StochasticRSI
-
 
 class StochMACD(bt.Strategy):
     # list of parameters which are configurable for the strategy
@@ -10,10 +10,6 @@ class StochMACD(bt.Strategy):
         ('macd1', 7),
         ('macd2', 21),
         ('macdsig', 5),
-        
-#         ('macd1', 12),
-#         ('macd2', 26),
-#         ('macdsig', 9),
         
         ('stoch_k_period', 3),
         ('stoch_d_period', 3),
@@ -27,13 +23,13 @@ class StochMACD(bt.Strategy):
         
         ('atrperiod', 14),  # ATR Period (standard)
         ('atrdist', 5),   # ATR distance for stop price
-
-        ('debug', False),
+        
+        ('loglevel', logging.WARNING)
     )
 
     def __init__(self):
+        logging.basicConfig(level=self.p.loglevel)
         self.dataclose = self.datas[0].close
-#         self.orders = []
         self.buyprice = None
         self.buycomm = None
         
@@ -58,10 +54,13 @@ class StochMACD(bt.Strategy):
                                    upperband=self.p.stoch_upperband,
                                    lowerband=self.p.stoch_lowerband)
         
-    def log(self, txt, dt=None):
+    def log(self, txt, level=logging.DEBUG, dt=None):
+        # if not self.p.debug:
+        #     return
         dt = dt or self.datas[0].datetime.date(0)
         hh = self.datas[0].datetime.time()
-        print('%s %s, %s' % (dt.isoformat(), hh, txt))
+        # logging.info('%s %s, %s' % (dt.isoformat(), hh, txt))
+        logging.log(level, '%s %s, %s' % (dt.isoformat(), hh, txt))
 
     def notify_order(self, order):
         if order.status in [order.Submitted, order.Accepted]:
@@ -109,22 +108,20 @@ class StochMACD(bt.Strategy):
         if not trade.isclosed:
             return
 
-        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
-                 (trade.pnl, trade.pnlcomm))
-        print("")
+        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' % (trade.pnl, trade.pnlcomm), level=logging.INFO)
             
     def log_trade(self):
+        # if not self.p.debug:
+            # return
         close = self.dataclose[0]
-        previousStochRSI = self.stochrsi.l.fastk[-1]
-        currentStochRSI = self.stochrsi.l.fastk[0]
         self.log('Close, %.2f' % close)
-        print("ATR: ", self.atr[0])
-        print("mcross: ", self.mcross[0])
-        print('previous stoch RSI:', self.stochrsi[-1])
-        print('current stoch RSI:', self.stochrsi[0])
-        print('fastk: ', currentStochRSI)
-        print('fastd: ', self.stochrsi.l.fastd[0])
-        print("")
+        self.log("ATR: %.2f" % self.atr[0])
+        self.log("mcross: %.2f" % self.mcross[0])
+        self.log('previous stoch RSI: %.2f' % self.stochrsi[-1])
+        self.log('current stoch RSI: %.2f' % self.stochrsi[0])
+        self.log('fastk: %.2f' % self.stochrsi.l.fastk[0])
+        self.log('fastd: %.2f' % self.stochrsi.l.fastd[0])
+        self.log("")
         
     def close_and_cancel_stops(self):
         self.close()
@@ -136,7 +133,6 @@ class StochMACD(bt.Strategy):
            name="ENTRY SHORT Order"
         )
         stop_price = close + self.p.atrdist * self.atr[0]
-        print("stop loss: ", stop_price)
         self.stop_order = self.buy(
             exectype=bt.Order.Stop, 
             price=stop_price, 
@@ -151,7 +147,6 @@ class StochMACD(bt.Strategy):
             name="ENTRY LONG Order"
         )
         stop_price = close - self.p.atrdist * self.atr[0]
-        print("stop loss: ", stop_price)
         self.stop_order = self.sell(
              exectype=bt.Order.Stop, 
              price=stop_price, 
@@ -162,9 +157,6 @@ class StochMACD(bt.Strategy):
 
     def next(self):        
         close = self.dataclose[0]
-#         self.log('Close, %.2f' % close)
-
-        previousStochRSI = self.stochrsi.l.fastk[-1]
         currentStochRSI = self.stochrsi.l.fastk[0]
         
         should_buy = (
@@ -273,74 +265,3 @@ class StochMACD(bt.Strategy):
                     self.sell_stop_loss(close)
                 else:
                     sell_order = self.sell(name="ENTRY SHORT Order")
-
-class MAcrossover(bt.Strategy): 
-    def log(self, txt, dt=None):
-        dt = dt or self.datas[0].datetime.date(0)
-        # print(f'{dt.isoformat()} {txt}') # Comment this line when running optimization
-
-    def __init__(self, pfast=20, pslow=50):
-        self.dataclose = self.datas[0].close
-        
-		# Order variable will contain ongoing order details/status
-        self.order = None
-
-        # Moving average parameters
-        self.params = {
-            'pfast': pfast,
-            'pslow': pslow
-        }
-
-        # Instantiate moving averages
-        self.fast_sma = bt.ind.SMA(period=self.params['pfast'])  # fast moving average
-        self.slow_sma = bt.ind.SMA(period=self.params['pslow'])  # slow moving average
-        self.crossover = bt.ind.CrossOver(self.fast_sma, self.slow_sma)
-        
-
-    def notify_order(self, order):
-        if order.status in [order.Submitted, order.Accepted]:
-            # An active Buy/Sell order has been submitted/accepted - Nothing to do
-            return
-
-        # Check if an order has been completed
-        # Attention: broker could reject order if not enough cash
-        if order.status in [order.Completed]:
-            if order.isbuy():
-                self.log(f'BUY EXECUTED, {order.executed.price:.2f}')
-            elif order.issell():
-                self.log(f'SELL EXECUTED, {order.executed.price:.2f}')
-            self.bar_executed = len(self)
-
-        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            self.log('Order Canceled/Margin/Rejected')
-
-        # Reset orders
-        self.order = None
-    
-    def next(self):
-        # Check for open orders
-        if self.order:
-            return
-
-        # Check if we are in the market
-        if not self.position:
-            # We are not in the market, look for a signal to OPEN trades
-                
-            #If the 20 SMA is above the 50 SMA
-            # if self.fast_sma[0] > self.slow_sma[0] and self.fast_sma[-1] < self.slow_sma[-1]:
-            if self.crossover > 0:
-                self.log(f'BUY CREATE {self.dataclose[0]:2f}')
-                # Keep track of the created order to avoid a 2nd order
-                self.order = self.buy()
-            #Otherwise if the 20 SMA is below the 50 SMA   
-            # elif self.fast_sma[0] < self.slow_sma[0] and self.fast_sma[-1] > self.slow_sma[-1]:
-            elif self.crossover < 0:
-                self.log(f'SELL CREATE {self.dataclose[0]:2f}')
-                # Keep track of the created order to avoid a 2nd order
-                self.order = self.sell()
-        else:
-            # We are already in the market, look for a signal to CLOSE trades
-            if len(self) >= (self.bar_executed + 5):
-                self.log(f'CLOSE CREATE {self.dataclose[0]:2f}')
-                self.order = self.close()
-
