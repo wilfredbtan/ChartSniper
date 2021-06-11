@@ -37,7 +37,7 @@ def parse_args(pargs=None):
                         help=('Amount of security to allocate for ops'))
 
     parser.add_argument('--commperc', required=False, action='store',
-                        type=float, default=0.002,
+                        type=float, default=0.0002,
                         help=('Perc (abs) commision in each operation. '
                               '0.001 -> 0.1%%, 0.01 -> 1%%'))
 

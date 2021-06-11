@@ -1,3 +1,4 @@
+from pprint import pprint
 import time
 import datetime as dt
 import backtrader as bt
@@ -15,11 +16,11 @@ from Parser import parse_args
 from Datasets import *
 
 def main():
-    # cerebro = bt.Cerebro(quicknotify=True)
-    cerebro = bt.Cerebro()
+    cerebro = bt.Cerebro(quicknotify=True)
+    # cerebro = bt.Cerebro()
 
     comminfo = CommInfo_Futures_Perc(
-        commission=0.002,
+        commission=0.0002,
         mult=5,
         margin=1000, # Margin is needed for futures-like instruments
     )
@@ -52,6 +53,24 @@ def main():
         # store.exchange.load_markets()
         # print(store.exchange.markets['BTC/USDT'])
 
+        # response = store.exchange.fapiPrivate_get_positionside_dual()
+        # if response['dualSidePosition']:
+        #     print('You are in Hedge Mode')
+        # else:
+        #     print('You are in One-way Mode')
+        
+        # Set leverage multiplier
+        symbol = 'BTC/USDT'
+        market = store.exchange.market(symbol)
+        leverage = 5
+
+        response = store.exchange.fapiPrivate_post_leverage({
+            'symbol': market['id'],
+            'leverage': leverage,
+        })
+
+        pprint(response)
+
         broker_mapping = {
             'order_types': {
                 bt.Order.Market: 'market',
@@ -73,15 +92,15 @@ def main():
         broker = store.getbroker(broker_mapping=broker_mapping)
         cerebro.setbroker(broker)
 
-        hist_start_date = dt.datetime.utcnow() - dt.timedelta(hours=1000)
-        # hist_start_date = dt.datetime.utcnow() - dt.timedelta(minutes=1000)
+        # hist_start_date = dt.datetime.utcnow() - dt.timedelta(hours=1000)
+        hist_start_date = dt.datetime.utcnow() - dt.timedelta(minutes=1000)
         data = store.getdata(
             dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
             name='%s%s' % (COIN_TARGET, COIN_REFER),
             timeframe=bt.TimeFrame.Minutes,
             fromdate=hist_start_date,
-            compression=60,
-            # compression=1,
+            # compression=60,
+            compression=1,
             # Max number of ticks before throttling occurs
             ohlcv_limit=1000,
             # Prevents loading partial data from incomplete candles
@@ -97,7 +116,7 @@ def main():
         data = bt.feeds.GenericCSVData(
             dataname=dataname,
             fromdate=dt.datetime(2018,2,1),
-            todate=dt.datetime(2021,6,1),
+            todate=dt.datetime(2021,6,9),
             timeframe=bt.TimeFrame.Minutes,
             nullvalue=0.0,
             datetime=0,
@@ -109,15 +128,15 @@ def main():
             compression=60,
             headers=True,
         )
-        cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=60)
-        # cerebro.adddata(data)
+        # cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=60)
+        cerebro.adddata(data)
 
         broker = cerebro.getbroker()
         # broker.setcommission(commission=0.001, name=COIN_TARGET)  # Simulating exchange fee
-        broker.setcash(1000.0)
+        broker.setcash(5000.0)
 
-    # cerebro.addsizer(bt.sizers.PercentSizer, percents=50)
-    cerebro.addsizer(bt.sizers.SizerFix, stake=0.001)
+    cerebro.addsizer(bt.sizers.PercentSizer, percents=1)
+    # cerebro.addsizer(bt.sizers.SizerFix, stake=0.001)
 
     # Analyzers to evaluate trades and strategies
     # SQN = Average( profit / risk ) / StdDev( profit / risk ) x SquareRoot( number of trades )

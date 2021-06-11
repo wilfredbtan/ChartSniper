@@ -114,7 +114,7 @@ class StrategyBase(bt.Strategy):
                     datetime_str = get_formatted_datetime(datetime_int, format='%d %b %Y %H:%M:%S')
                     if order.ccxt_order["info"]["status"] == 'FILLED':
                         self.log(
-                            'BUY EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Time: %s' %
+                            'BUY EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Date: %s' %
                             (order.info.name,
                             order.ccxt_order["amount"],
                             order.ccxt_order["average"],
@@ -143,7 +143,7 @@ class StrategyBase(bt.Strategy):
                     datetime_str = get_formatted_datetime(datetime_int, format='%d %b %Y %H:%M:%S')
                     if order.ccxt_order["info"]["status"] == 'FILLED':
                         self.log(
-                            'SELL EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Time: %s' %
+                            'SELL EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Date: %s' %
                             (order.info.name,
                             order.ccxt_order["amount"],
                             order.ccxt_order["average"],
@@ -174,19 +174,18 @@ class StrategyBase(bt.Strategy):
             self.log('Order Rejected: %s' % order.info.name, level=logging.INFO, send_telegram=True)
             self.log_trade()
 
-        # if ENV == PRODUCTION:
+    def log_profit(self, pnl, pnlcomm):
+        color = 'green'
+        if pnl < 0:
+            color = 'red'
+
+        self.log(colored('OPERATION PROFIT, GROSS %.2f, NET %.2f' % (pnl, pnlcomm), color), level=logging.INFO, send_telegram=True)
 
     def notify_trade(self, trade):
         # print("notify trade")
         # if not trade.isclosed:
         #     return
-
-        color = 'green'
-        if trade.pnl < 0:
-            color = 'red'
-
-        self.log(colored('OPERATION PROFIT, GROSS %.2f, NET %.2f' % (trade.pnl, trade.pnlcomm), color), level=logging.INFO, send_telegram=True)
-    
+        self.log_profit(trade.pnl, trade.pnlcomm)
 
     def close_and_cancel_stops(self):
         close_order = self.close()
@@ -338,6 +337,10 @@ class TESTBUY(StrategyBase):
         txt.append('{}'.format(self.data.volume[0]))
         print(', '.join(txt))
 
+        if ENV == PRODUCTION and self.status != "LIVE":
+            return
+
+        print("CHECK")
         # print("Should buy:")
         # print("self.mcross[0] > 0.0", self.mcross[0] > 0.0)
         # print("self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband)
@@ -354,9 +357,6 @@ class TESTBUY(StrategyBase):
         # print("self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband)
         # print("")
     
-        if ENV == PRODUCTION and self.status != "LIVE":
-            return
-
         # if self.position.size <= 0 and not self.bought_once:
         #     print("buy")
         #     self.buy(exectype=bt.Order.Limit, price=30000)
@@ -367,11 +367,11 @@ class TESTBUY(StrategyBase):
 
         if self.position.size >= 0 and not self.sold_once:
             print("sell")
-            self.sell(exectype=bt.Order.Limit, price=60000)
+            # self.sell(exectype=bt.Order.Limit, price=60000)
             # self.close_and_cancel_stops()
             # # self.sell()
-            # self.sell_stop_loss(close)
-            # self.sold_once = True
+            self.sell_stop_loss(close)
+            self.sold_once = True
 
         if self.position.size != 0:
             print("close")
@@ -435,16 +435,11 @@ class StochMACD(StrategyBase):
                                    stoch_period=self.p.stoch_period,
                                    upperband=self.p.stoch_upperband,
                                    lowerband=self.p.stoch_lowerband)
-    def stop(self):
-        print("final count: ", self.count)
         
     def next(self):        
         close = self.dataclose[0]
         currentStochRSI = self.stochrsi.l.fastk[0]
         self.count += 1
-
-        # if self.count > 0:
-        #     self.count -= 1
 
         # if self.status == "LIVE":
         # print("Values: ")
@@ -470,6 +465,9 @@ class StochMACD(StrategyBase):
         # print("self.stochrsi.l.fastk[-1] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-1] > self.p.stoch_lowerband)
         # print("self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband)
         # print("")
+
+        if ENV == PRODUCTION and self.status != "LIVE":
+            return
         
         should_buy = (
             self.mcross[0] > 0.0 and
