@@ -354,23 +354,28 @@ class TESTBUY(StrategyBase):
         # print("self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband)
         # print("")
     
-        if self.status == "LIVE":
-            if self.position.size <= 0 and not self.bought_once:
-                print("buy")
-                # self.close_and_cancel_stops()
-                # self.buy()
-                # self.buy_stop_loss(close)
-                self.buy(exectype=bt.Order.Limit, price=30000)
-                self.bought_once = True
+        if ENV == PRODUCTION and self.status != "LIVE":
+            return
 
-            # if self.position.size >= 0 and not self.sold_once:
-            #     self.close_and_cancel_stops()
-            #     # self.sell()
-            #     self.sell_stop_loss(close)
-            #     self.sold_once = True
+        # if self.position.size <= 0 and not self.bought_once:
+        #     print("buy")
+        #     self.buy(exectype=bt.Order.Limit, price=30000)
+        #     # self.close_and_cancel_stops()
+        #     # self.buy()
+        #     # self.buy_stop_loss(close)
+        #     self.bought_once = True
 
-            if self.position.size != 0:
-                self.close_and_cancel_stops()
+        if self.position.size >= 0 and not self.sold_once:
+            print("sell")
+            self.sell(exectype=bt.Order.Limit, price=60000)
+            # self.close_and_cancel_stops()
+            # # self.sell()
+            # self.sell_stop_loss(close)
+            # self.sold_once = True
+
+        if self.position.size != 0:
+            print("close")
+            self.close_and_cancel_stops()
 
 
 

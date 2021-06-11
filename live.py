@@ -74,17 +74,18 @@ def main():
         cerebro.setbroker(broker)
 
         hist_start_date = dt.datetime.utcnow() - dt.timedelta(hours=1000)
+        # hist_start_date = dt.datetime.utcnow() - dt.timedelta(minutes=1000)
         data = store.getdata(
             dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
             name='%s%s' % (COIN_TARGET, COIN_REFER),
             timeframe=bt.TimeFrame.Minutes,
-            # timeframe=bt.TimeFrame.Days,
             fromdate=hist_start_date,
-            # Max number of ticks before throttling occurs
             compression=60,
+            # compression=1,
+            # Max number of ticks before throttling occurs
             ohlcv_limit=1000,
             # Prevents loading partial data from incomplete candles
-            drop_newest=True
+            # drop_newest=True
         )
 
         # Add the feed
