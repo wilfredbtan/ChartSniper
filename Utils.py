@@ -3,8 +3,8 @@ from datetime import datetime
 from config import ENV
 from Telegram import Telegram_Bot
 
-def get_formatted_datetime(unix):
-    return datetime.utcfromtimestamp(unix).strftime('%Y-%m-%d %H:%M:%S')
+def get_formatted_datetime(unix, format='%Y-%m-%d %H:%M:%S'):
+    return datetime.utcfromtimestamp(unix).strftime(format)
 
 
 def reverse_and_clean(input_name, output_name):

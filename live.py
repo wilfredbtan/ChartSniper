@@ -1,14 +1,13 @@
 import time
 import datetime as dt
 import backtrader as bt
-from Telegram import Telegram_Bot
 
-from ccxtbt import CCXTStore
+from ccxtbt import CCXTStore, CCXTFeed
 from config import BINANCE, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 # from config import BITFINEX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 # from config import KRAKEN, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 
-from utils import print_trade_analysis, print_sqn, send_telegram_message
+from utils import print_trade_analysis, print_sqn, send_telegram_message, get_formatted_datetime
 
 from Strategies import StochMACD, TESTBUY
 from Commissions import CommInfo_Futures_Perc
@@ -34,6 +33,7 @@ def main():
             # 'secret': BITFINEX.get("secret"),
             'apiKey': BINANCE.get("key"),
             'secret': BINANCE.get("secret"),
+            # 'nonce': lambda: str(int(time.time() * 1000)),
             'nonce': lambda: str(int(time.time() * 1000)),
             'enableRateLimit': True,
         }
@@ -73,17 +73,18 @@ def main():
         broker = store.getbroker(broker_mapping=broker_mapping)
         cerebro.setbroker(broker)
 
-        hist_start_date = dt.datetime.utcnow() - dt.timedelta(minutes=30000)
+        hist_start_date = dt.datetime.utcnow() - dt.timedelta(hours=1000)
         data = store.getdata(
             dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
             name='%s%s' % (COIN_TARGET, COIN_REFER),
             timeframe=bt.TimeFrame.Minutes,
+            # timeframe=bt.TimeFrame.Days,
             fromdate=hist_start_date,
+            # Max number of ticks before throttling occurs
             compression=60,
-            # Only works for Binance
-            ohlcv_limit=99999
-            # Use this for Bitfinex
-            # ohlcv_limit=9999
+            ohlcv_limit=1000,
+            # Prevents loading partial data from incomplete candles
+            drop_newest=True
         )
 
         # Add the feed
@@ -107,15 +108,15 @@ def main():
             compression=60,
             headers=True,
         )
-        # cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=30)
-        cerebro.adddata(data)
+        cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=60)
+        # cerebro.adddata(data)
 
         broker = cerebro.getbroker()
         # broker.setcommission(commission=0.001, name=COIN_TARGET)  # Simulating exchange fee
         broker.setcash(1000.0)
 
     # cerebro.addsizer(bt.sizers.PercentSizer, percents=50)
-    cerebro.addsizer(bt.sizers.SizerFix, stake=0.01)
+    cerebro.addsizer(bt.sizers.SizerFix, stake=0.001)
 
     # Analyzers to evaluate trades and strategies
     # SQN = Average( profit / risk ) / StdDev( profit / risk ) x SquareRoot( number of trades )
@@ -153,10 +154,11 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        time = dt.datetime.now().strftime("%d-%m-%y %H:%M")
-        print("Chart Sniper finished by user at %s" % time)
-        send_telegram_message("Bot finished by user at %s" % time)
+        datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
+        print("Chart Sniper finished by user on %s" % datetime_str)
+        send_telegram_message("Bot finished by user on %s" % datetime_str)
     except Exception as err:
-        send_telegram_message("Bot finished with error: %s" % err)
+        datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
+        send_telegram_message("Bot finished with error: %s on %s" % (err, datetime_str))
         print("Chart Sniper finished with error: ", err)
         raise
