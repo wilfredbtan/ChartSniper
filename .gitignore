@@ -1,1 +1,3 @@
 crypto
+.env
+*.pem

@@ -1,12 +1,12 @@
 import os
 
 # print("From 2019")
-# os.system('python3 main.py -o --fromdate 2019-5-1 --todate 2021-5-1 --cashperc 50')
+# os.system('python3 backtest.py -o --fromdate 2019-5-1 --todate 2021-5-1 --cashperc 50')
 # print("From 2018")
-# os.system('python3 main.py -o --fromdate 2018-4-1 --todate 2019-4-1  --cashperc 50')
+# os.system('python3 backtest.py -o --fromdate 2018-4-1 --todate 2019-4-1  --cashperc 50')
 
-# os.system('python3 main.py --macd1 9 --macd2 21 --macdsig 8 --fromdate 2019-5-1 --todate 2021-5-1')
-# os.system('python3 main.py --macd1 11 --macd2 24 --macdsig 7 --fromdate 2018-4-1 --todate 2019-4-1')
+# os.system('python3 backtest.py --macd1 9 --macd2 21 --macdsig 8 --fromdate 2019-5-1 --todate 2021-5-1')
+# os.system('python3 backtest.py --macd1 11 --macd2 24 --macdsig 7 --fromdate 2018-4-1 --todate 2019-4-1')
 
 ''' Optimize for MACD. 9 21 8 seems the best for some reason lol'''
     # From 2019
@@ -51,13 +51,17 @@ mult = '--mult 5'
 # after this, negative or pnl goes down
 
 # Optimized
-# os.system(f'python3 main.py {macd} --fromdate 2019-5-1 --todate 2021-5-1 {atrdist}')
-# os.system(f'python3 main.py {macd} --fromdate 2018-4-1 --todate 2019-4-1 {atrdist}')
-# os.system(f'python3 main.py {macd} {atrdist}')
+# os.system(f'python3 backtest.py {macd} --fromdate 2019-5-1 --todate 2021-5-1 {atrdist}')
+# os.system(f'python3 backtest.py {macd} --fromdate 2018-4-1 --todate 2019-4-1 {atrdist}')
+# os.system(f'python3 backtest.py {macd} {atrdist}')
+
+# date = '--fromdate 2019-5-1 --todate 2021-5-1'
+# date = '--fromdate 2018-4-1 --todate 2019-4-1'
+date = ''
 
 #Best so far
-os.system(f'python3 main.py {macd} {atrdist} {mult}')
+os.system(f'python3 backtest.py {macd} {atrdist} {mult} {date}')
 
-# python3 main.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --mult 5
-# python3 main.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --mult 5 --fromdate 2019-5-1 --todate 2021-5-1 
-# python3 main.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --mult 5 --fromdate 2018-4-1 --todate 2019-4-1
+# python3 backtest.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --mult 5
+# python3 backtest.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --mult 5 --fromdate 2019-5-1 --todate 2021-5-1 
+# python3 backtest.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --mult 5 --fromdate 2018-4-1 --todate 2019-4-1

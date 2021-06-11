@@ -2,10 +2,10 @@ import backtrader as bt
 from datetime import datetime
 
 from backtrader.cerebro import OptReturn
-from Strategies import StochMACD
 from Commissions import CommInfo_Futures_Perc
 from Parser import parse_args
 from Datasets import *
+from Strategies import StochMACD
 
 def runstrat(args=None):
     args = parse_args(args)
@@ -73,6 +73,7 @@ def runstrat(args=None):
             atrperiod=args.atrperiod,
             # atrdist=args.atrdist,
             atrdist=5,
+            reversal_sensitivity=20,
             loglevel=args.loglevel
         )
 
@@ -97,6 +98,7 @@ def runstrat(args=None):
                         strategy.p.macd1, 
                         strategy.p.macd2, 
                         strategy.p.macdsig, 
+                        strategy.p.reversal_sensitivity, 
                     ]
                 )
         sort_by_analyzer = sorted(final_results_list, key=lambda x: x[0], reverse=True)
@@ -130,4 +132,3 @@ def runstrat(args=None):
 
 if __name__ == '__main__':
     runstrat()
-

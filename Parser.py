@@ -16,7 +16,7 @@ def parse_args(pargs=None):
                         help='Starting date in YYYY-MM-DD format')
 
     parser.add_argument('--todate', required=False,
-                        default='2021-06-01',
+                        default='2021-06-09',
                         help='Ending date in YYYY-MM-DD format')
 
     parser.add_argument('--cash', required=False, action='store',
@@ -102,6 +102,11 @@ def parse_args(pargs=None):
     parser.add_argument('--atrdist', required=False, action='store',
                         type=float, default=5.0,
                         help=('ATR Factor for stop price calculation'))
+
+    parser.add_argument('--reversal_sensitivity', required=False, action='store',
+                        type=float, default=20.0,
+                        help=('Sensitivity for a reversal in Stoch RSI to be recognized', 
+                        'Calculated as fastk - fastk'))
 
     parser.add_argument('--plot', '-p', action='store_true',
                     help='Plot the read data')
