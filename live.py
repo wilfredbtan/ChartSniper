@@ -11,7 +11,6 @@ from config import BINANCE, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, D
 from utils import print_trade_analysis, print_sqn, send_telegram_message, get_formatted_datetime
 
 from Strategies import StochMACD, TESTBUY
-from Commissions import CommInfo_Futures_Perc
 from Parser import parse_args
 from Datasets import *
 
@@ -19,12 +18,7 @@ def main():
     cerebro = bt.Cerebro(quicknotify=True)
     # cerebro = bt.Cerebro()
 
-    comminfo = CommInfo_Futures_Perc(
-        commission=0.0002,
-        mult=5,
-        margin=1000, # Margin is needed for futures-like instruments
-    )
-    cerebro.broker.addcommissioninfo(comminfo)
+    leverage = 5
 
     if ENV == PRODUCTION:  # Live trading with Binance
         broker_config = {
@@ -62,7 +56,6 @@ def main():
         # Set leverage multiplier
         symbol = 'BTC/USDT'
         market = store.exchange.market(symbol)
-        leverage = 5
 
         response = store.exchange.fapiPrivate_post_leverage({
             'symbol': market['id'],
@@ -111,6 +104,7 @@ def main():
         cerebro.adddata(data)
 
     else:  # Backtesting with CSV file
+        cerebro.broker.setcommission(commission=0.0002, leverage=5)
 
         dataname = DATASETS.get('btc_hourly')
         data = bt.feeds.GenericCSVData(
@@ -128,14 +122,13 @@ def main():
             compression=60,
             headers=True,
         )
-        # cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=60)
         cerebro.adddata(data)
-
         broker = cerebro.getbroker()
-        # broker.setcommission(commission=0.001, name=COIN_TARGET)  # Simulating exchange fee
         broker.setcash(5000.0)
 
-    cerebro.addsizer(bt.sizers.PercentSizer, percents=1)
+    cashperc = 50
+
+    # cerebro.addsizer(bt.sizers.PercentSizer, percents=cashperc)
     # cerebro.addsizer(bt.sizers.SizerFix, stake=0.001)
 
     # Analyzers to evaluate trades and strategies
@@ -144,14 +137,19 @@ def main():
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
     # Include Strategy
-    # cerebro.addstrategy(StochMACD, 
-    #     macd1=9,
-    #     macd2=21,
-    #     macdsig=8,
-    #     atrdist=5
-    # )
+    # cerebro.addstrategy(StochMACD,
+    #                     macd1=9,
+    #                     macd2=21,
+    #                     macdsig=8,
+    #                     atrdist=5,
+    #                     reversal_sensitivity=18,
+    #                     cashperc=cashperc,
+    #                     leverage=leverage)
 
-    cerebro.addstrategy(TESTBUY)
+    cerebro.addstrategy(TESTBUY,
+                        cashperc=cashperc,
+                        leverage=leverage,
+                        cerebro=cerebro)
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()

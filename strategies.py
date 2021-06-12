@@ -2,22 +2,26 @@ from pprint import pprint
 from termcolor import colored
 import logging
 import backtrader as bt
-from datetime import datetime
 from Indicators import StochasticRSI
 from config import PRODUCTION, SANDBOX, ENV
 from utils import send_telegram_message, get_formatted_datetime
 
 class StrategyBase(bt.Strategy):
+
+    params = (
+        ("cashperc", 50),
+        ("leverage", 5),
+        ("cerebro", None),
+        ('loglevel', logging.WARNING)
+    )
+
     def __init__(self):
         self.order = None
-        # self.last_operation = "SELL"
         self.status = "DISCONNECTED"
-        # self.bar_executed = 0
-        # self.buy_price_close = None
-        # self.soft_sell = False
-        # self.hard_sell = False
-        # self.log("Base strategy initialized")
-        self.data_once = False
+        self.last_buy_price = None
+        self.last_sell_price = None
+        self.logged_order_ids = set()
+        self.stop_order = None
 
     def reset_sell_indicators(self):
         self.soft_sell = False
@@ -30,67 +34,11 @@ class StrategyBase(bt.Strategy):
         if status == data.LIVE:
             self.log("LIVE DATA - Ready to trade")
         
-        
-        print("Data")
-        # if not self.data_once:
-        #     self.data_once = True
-        #     print("Values: ")
-        #     print("self.mcross[0]", self.mcross[0])
-        #     print("self.stochrsi.l.fastk[-3]", self.stochrsi.l.fastk[-3])
-        #     print("self.stochrsi.l.fastk[-2]", self.stochrsi.l.fastk[-2])
-        #     print("self.stochrsi.l.fastk[-1]", self.stochrsi.l.fastk[-1])
-        #     print("self.stochrsi.l.fastk[0]", self.stochrsi.l.fastk[0])
-        #     print("")
-
-        #     print("Should buy:")
-        #     print("self.mcross[0] > 0.0", self.mcross[0] > 0.0)
-        #     print("self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband)
-        #     print("self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband)
-        #     print("self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband)
-        #     print("self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband)
-        #     print("")
-
-        #     print("Should sell:")
-        #     print("self.mcross[0] < 0.0", self.mcross[0] < 0.0)
-        #     print("self.stochrsi.l.fastk[-3] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-3] > self.p.stoch_lowerband)
-        #     print("self.stochrsi.l.fastk[-2] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-2] > self.p.stoch_lowerband)
-        #     print("self.stochrsi.l.fastk[-1] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-1] > self.p.stoch_lowerband)
-        #     print("self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband)
-        #     print("")
-        
-
-    # def short(self):
-    #     if self.last_operation == "SELL":
-    #         return
-
-    #     if ENV == DEVELOPMENT:
-    #         self.log("Sell ordered: $%.2f" % self.data0.close[0])
-    #         return self.sell()
-
-    #     cash, value = self.broker.get_wallet_balance(COIN_TARGET)
-    #     amount = value*0.99
-    #     self.log("Sell ordered: $%.2f. Amount %.6f %s - $%.2f USDT" % (self.data0.close[0],
-    #                                                                    amount, COIN_TARGET, value), True)
-    #     return self.sell(size=amount)
-
-    # def long(self):
-    #     if self.last_operation == "BUY":
-    #         return
-
-    #     self.log("Buy ordered: $%.2f" % self.data0.close[0], True)
-    #     self.buy_price_close = self.data0.close[0]
-    #     price = self.data0.close[0]
-
-    #     if ENV == DEVELOPMENT:
-    #         return self.buy()
-
-    #     cash, value = self.broker.get_wallet_balance(COIN_REFER)
-    #     amount = (value / price) * 0.99  # Workaround to avoid precision issues
-    #     self.log("Buy ordered: $%.2f. Amount %.6f %s. Ballance $%.2f USDT" % (self.data0.close[0],
-    #                                                                           amount, COIN_TARGET, value), True)
-        # return self.buy(size=amount)
-
     def notify_order(self, order):
+        # print("self")
+        # s = dir(self)
+        # pprint(s)
+
         # print("order")
         # print(order)
         # l = dir(order)
@@ -101,68 +49,96 @@ class StrategyBase(bt.Strategy):
         # pprint(order.info.name)
         # print("ccxt_order")
         # pprint(order.ccxt_order)
+        close = self.dataclose[0]
 
         if order.status in [order.Submitted, order.Accepted]:
             return
 
         if order.status in [order.Completed]:
-            if order.isbuy():
-                if ENV == PRODUCTION:
-                    # Access ccxt order instead
-                    datetime_int = int(order.ccxt_order["timestamp"])
-                    datetime_int = datetime_int/1000 if datetime_int > 10000000000 else datetime_int
-                    datetime_str = get_formatted_datetime(datetime_int, format='%d %b %Y %H:%M:%S')
-                    if order.ccxt_order["info"]["status"] == 'FILLED':
+            if ENV == PRODUCTION:
+                # Access ccxt order
+                
+                datetime_int = int(order.ccxt_order["timestamp"])
+                datetime_int = datetime_int/1000 if datetime_int > 10000000000 else datetime_int
+                datetime_str = get_formatted_datetime(datetime_int, format='%d %b %Y %H:%M:%S')
+
+                order_id = order.ccxt_order["id"]
+                order_name = order.info.name
+                order_cost = order.ccxt_order["cost"]
+
+                print("order ids: ", self.logged_order_ids)
+                if order_id in self.logged_order_ids:
+                    self.logged_order_ids.remove(order_id)
+                    return
+                else:
+                    self.logged_order_ids.add(order_id)
+
+                if order.ccxt_order["info"]["status"] == 'FILLED':
+                    if order.isbuy():
                         self.log(
                             'BUY EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Date: %s' %
-                            (order.info.name,
+                            (order_name,
                             order.ccxt_order["amount"],
+                            order.ccxt_order["average"],
+                            order_cost,
+                            datetime_str),
+                            level=logging.INFO,
+                            send_telegram=True)
+                            # No commission (fee) data available as at 12 June 2021
+                        if order_name == "CLOSE":
+                            pnl = self.last_sell_price - order_cost  
+                            self.log_profit(pnl)
+                            # print("buy close broker cash")
+                            # print("cerebro cash", self.cerebro.broker.cash)
+                        else:
+                            self.last_buy_price = order_cost
+                    else:
+                        self.log(
+                            'SELL EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Date: %s' %
+                            (order.info.name,
+                            -order.ccxt_order["amount"],
                             order.ccxt_order["average"],
                             order.ccxt_order["cost"],
                             datetime_str),
                             level=logging.INFO,
                             send_telegram=True)
-                            # Commission is zero for some reason
-                else:
+                            # No commission (fee) data available as at 12 June 2021
+                        if order_name == "CLOSE":
+                            pnl = self.last_buy_price - order_cost  
+                            self.log_profit(pnl)
+                            # print("sell close broker cash")
+                            # print("cerebro cash", self.cerebro.broker.cash)
+                        else:
+                            self.last_sell_price = order_cost 
+            else:
+                if order.isbuy():
                     self.log(
-                        'BUY EXECUTED: %s, Price: %.4f, Cost: %.4f, Comm %.2f' %
+                        'BUY EXECUTED: %s, Amount: %.2f, Price: %.4f, Cost: %.4f, Comm %.2f' %
                         (order.info.name,
+                        order.executed.size,
                         order.executed.price,
                         order.executed.value,
                         order.executed.comm), 
                         level=logging.INFO)
 
-                self.buyprice = order.executed.price
-                self.buycomm = order.executed.comm
-                self.log_trade()
-            else:  # Sell
-                if ENV == PRODUCTION:
-                    # Access ccxt order instead
-                    datetime_int = int(order.ccxt_order["timestamp"])
-                    datetime_int = datetime_int/1000 if datetime_int > 10000000000 else datetime_int
-                    datetime_str = get_formatted_datetime(datetime_int, format='%d %b %Y %H:%M:%S')
-                    if order.ccxt_order["info"]["status"] == 'FILLED':
-                        self.log(
-                            'SELL EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Date: %s' %
+                    if order.info.name == "CLOSE":
+                        self.sell_stop_loss(close)
+                        # print("buy close broker cash")
+                        # print("cerebro cash", self.cerebro.broker.cash)
+                else:  # Sell
+                    self.log('SELL EXECUTED: %s, Amount: %.2f, Price: %.5f, Cost: %.5f, Comm %.5f' %
                             (order.info.name,
-                            order.ccxt_order["amount"],
-                            order.ccxt_order["average"],
-                            order.ccxt_order["cost"],
-                            datetime_str),
-                            level=logging.INFO,
-                            send_telegram=True)
-                            # Commission is zero for some reaso
-                else:
-                    self.log('SELL EXECUTED: %s, Price: %.5f, Cost: %.5f, Comm %.5f' %
-                            (order.info.name,
+                            order.executed.size,
                             order.executed.price,
                             order.executed.value,
                             order.executed.comm),
                             level=logging.INFO)
+                    if order.info.name == "CLOSE":
+                        self.buy_stop_loss(close)
+                        # print("sell close broker cash")
+                        # print("cerebro cash", self.cerebro.broker.cash)
                 
-                self.log_trade()
-
-            # self.bar_executed = len(self)
+            self.log_trade()
 
         elif order.status in [order.Canceled]:
             self.log('Order Canceled: %s' % order.info.name, level=logging.INFO, send_telegram=True)
@@ -174,17 +150,11 @@ class StrategyBase(bt.Strategy):
             self.log('Order Rejected: %s' % order.info.name, level=logging.INFO, send_telegram=True)
             self.log_trade()
 
-    def log_profit(self, pnl, pnlcomm):
-        color = 'green'
-        if pnl < 0:
-            color = 'red'
-
-        self.log(colored('OPERATION PROFIT, GROSS %.2f, NET %.2f' % (pnl, pnlcomm), color), level=logging.INFO, send_telegram=True)
 
     def notify_trade(self, trade):
         # print("notify trade")
-        # if not trade.isclosed:
-        #     return
+        if not trade.isclosed:
+            return
         self.log_profit(trade.pnl, trade.pnlcomm)
 
     def close_and_cancel_stops(self):
@@ -195,14 +165,20 @@ class StrategyBase(bt.Strategy):
             self.cancel(self.stop_order)
 
     def sell_stop_loss(self, close):
+        size = self.cerebro.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close
+        print("cerebro cash", self.cerebro.broker.cash)
+        print("size", size)
+
         sell_order = self.sell(
-           transmit=False, 
+            size=size, 
+            transmit=False, 
         )
         sell_order.addinfo(name="ENTRY SHORT Order")
 
         stop_price = close + self.p.atrdist * self.atr[0]
         self.stop_order = self.buy(
             exectype=bt.Order.StopLimit, 
+            size=sell_order.size, 
             price=stop_price, 
             stopPrice=stop_price,
             parent=sell_order, 
@@ -214,7 +190,12 @@ class StrategyBase(bt.Strategy):
         #     print("order name", order.info.name)
         
     def buy_stop_loss(self, close):
+        size = self.cerebro.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close
+        print("cerebro cash", self.cerebro.broker.cash)
+        print("size", size)
+
         buy_order = self.buy(
+            size=size,
             transmit=False, 
         )
         # Kwargs do not work in bt-ccxt
@@ -222,26 +203,29 @@ class StrategyBase(bt.Strategy):
 
         stop_price = close - self.p.atrdist * self.atr[0]
         self.stop_order = self.sell(
-             exectype=bt.Order.StopLimit, 
-             size=buy_order.size,
-             price=stop_price, 
-             stopPrice=stop_price,
-             parent=buy_order, 
-             transmit=True,
+            exectype=bt.Order.StopLimit,
+            size=buy_order.size,
+            price=stop_price,
+            stopPrice=stop_price,
+            parent=buy_order,
+            transmit=True,
         )
         # Kwargs do not work in bt-ccxt
         self.stop_order.addinfo(name="STOPLOSS for LONG")
 
     def log(self, txt, level=logging.DEBUG, send_telegram=False, color=None, dt=None):
+        log_txt = txt
         if color:
-            txt = colored(txt, color)
+            log_txt = colored(txt, color)
 
         dt = dt or self.datas[0].datetime.date(0)
         hh = self.datas[0].datetime.time()
 
-        logging.log(level, '%s %s, %s' % (dt.isoformat(), hh, txt))
+        logging.log(level, '%s %s, %s' % (dt.isoformat(), hh, log_txt))
+
         if send_telegram and ENV == PRODUCTION:
             telegram_txt = txt.replace(', ', '\n')
+            print("Telegram text: ", telegram_txt)
             send_telegram_message(telegram_txt)
     
     def log_trade(self):
@@ -254,6 +238,18 @@ class StrategyBase(bt.Strategy):
         self.log('fastk: %.2f' % self.stochrsi.l.fastk[0])
         self.log('fastd: %.2f' % self.stochrsi.l.fastd[0])
         self.log("")
+    
+
+    def log_profit(self, pnl, pnlcomm=None):
+        color = 'green'
+        if pnl < 0:
+            color = 'red'
+        txt = 'OPERATION PROFIT: GROSS %.2f' % pnl
+
+        if pnlcomm:
+            txt += ', NET %.2f' % pnlcomm
+
+        self.log(txt, level=logging.INFO, send_telegram=True, color=color)
 
 
 class TESTBUY(StrategyBase):
@@ -279,8 +275,6 @@ class TESTBUY(StrategyBase):
         ('atrdist', 5),   # ATR distance for stop price
 
         ('reversal_sensitivity', 20),
-        
-        ('loglevel', logging.INFO)
     )
 
     def __init__(self):
@@ -293,6 +287,7 @@ class TESTBUY(StrategyBase):
 
         self.bought_once = False
         self.sold_once = False
+        print("cash perc in test", self.p.cashperc)
 
         # if SANDBOX != True:
         #     print("Using a test strategy in production")
@@ -318,29 +313,29 @@ class TESTBUY(StrategyBase):
     def next(self):
         close = self.dataclose[0]
 
-        print("Values: ")
-        print("self.mcross[0]", self.mcross[0])
-        print("self.stochrsi.l.fastk[-3]", self.stochrsi.l.fastk[-3])
-        print("self.stochrsi.l.fastk[-2]", self.stochrsi.l.fastk[-2])
-        print("self.stochrsi.l.fastk[-1]", self.stochrsi.l.fastk[-1])
-        print("self.stochrsi.l.fastk[0]", self.stochrsi.l.fastk[0])
-        print("")
+        # print("Values: ")
+        # print("self.mcross[0]", self.mcross[0])
+        # print("self.stochrsi.l.fastk[-3]", self.stochrsi.l.fastk[-3])
+        # print("self.stochrsi.l.fastk[-2]", self.stochrsi.l.fastk[-2])
+        # print("self.stochrsi.l.fastk[-1]", self.stochrsi.l.fastk[-1])
+        # print("self.stochrsi.l.fastk[0]", self.stochrsi.l.fastk[0])
+        # print("")
 
-        txt = list()
-        txt.append('%04d' % len(self))
-        dtfmt = '%Y-%m-%dT%H:%M:%S.%f'
-        txt.append('%s' % self.data.datetime.datetime(0).strftime(dtfmt))
-        txt.append('{}'.format(self.data.open[0]))
-        txt.append('{}'.format(self.data.high[0]))
-        txt.append('{}'.format(self.data.low[0]))
-        txt.append('{}'.format(self.data.close[0]))
-        txt.append('{}'.format(self.data.volume[0]))
-        print(', '.join(txt))
+        # txt = list()
+        # txt.append('%04d' % len(self))
+        # dtfmt = '%Y-%m-%dT%H:%M:%S.%f'
+        # txt.append('%s' % self.data.datetime.datetime(0).strftime(dtfmt))
+        # txt.append('{}'.format(self.data.open[0]))
+        # txt.append('{}'.format(self.data.high[0]))
+        # txt.append('{}'.format(self.data.low[0]))
+        # txt.append('{}'.format(self.data.close[0]))
+        # txt.append('{}'.format(self.data.volume[0]))
+        # print(', '.join(txt))
 
         if ENV == PRODUCTION and self.status != "LIVE":
             return
 
-        print("CHECK")
+        print("LIVE NEXT")
         # print("Should buy:")
         # print("self.mcross[0] > 0.0", self.mcross[0] > 0.0)
         # print("self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband)
@@ -357,24 +352,29 @@ class TESTBUY(StrategyBase):
         # print("self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband)
         # print("")
     
-        # if self.position.size <= 0 and not self.bought_once:
-        #     print("buy")
-        #     self.buy(exectype=bt.Order.Limit, price=30000)
-        #     # self.close_and_cancel_stops()
-        #     # self.buy()
-        #     # self.buy_stop_loss(close)
-        #     self.bought_once = True
+        if self.position.size < 0 and not self.bought_once:
+            print("buy")
+            # self.buy(exectype=bt.Order.Limit, price=30000)
+            self.close_and_cancel_stops()
+            # self.buy()
+            self.buy_stop_loss(close)
+            self.bought_once = True
 
-        if self.position.size >= 0 and not self.sold_once:
+        if self.position.size > 0 and not self.sold_once:
             print("sell")
             # self.sell(exectype=bt.Order.Limit, price=60000)
-            # self.close_and_cancel_stops()
+            self.close_and_cancel_stops()
             # # self.sell()
             self.sell_stop_loss(close)
             self.sold_once = True
 
-        if self.position.size != 0:
-            print("close")
+        if self.position.size == 0:
+            print("SHOULD BUY")
+            self.close_and_cancel_stops()
+            # self.log('BUY CREATE, %.2f' % self.dataclose[0])
+            self.buy_stop_loss(close)
+
+        if self.position.size != 0 and self.bought_once and self.sold_once:
             self.close_and_cancel_stops()
 
 
@@ -402,16 +402,12 @@ class StochMACD(StrategyBase):
         ('atrdist', 5),   # ATR distance for stop price
 
         ('reversal_sensitivity', 20),
-        
-        ('loglevel', logging.WARNING)
     )
 
     def __init__(self):
         StrategyBase.__init__(self)
         logging.basicConfig(level=self.p.loglevel, force=True)
         self.dataclose = self.datas[0].close
-        self.buyprice = None
-        self.buycomm = None
         
         self.stop_order = None
         
@@ -511,21 +507,21 @@ class StochMACD(StrategyBase):
                         self.close_and_cancel_stops()
                         self.log('INTERIM REVERSAL SELL, %.2f' % self.dataclose[0])
 
-                        if should_trade_on_reversal:
-                            if should_stop_loss:
-                                self.sell_stop_loss(close)   
-                            else:
-                                self.sell(name="ENTRY SHORT Order")
+                        # if should_trade_on_reversal:
+                        #     if should_stop_loss:
+                        #         self.sell_stop_loss(close)   
+                        #     else:
+                        #         self.sell(name="ENTRY SHORT Order")
             
             if should_sell:
                 self.close_and_cancel_stops()
 
                 self.log('REVERSAL SELL, %.2f' % self.dataclose[0])
                 
-                if should_stop_loss:
-                    self.sell_stop_loss(close)
-                else:
-                    self.sell(name="ENTRY SHORT Order")
+                # if should_stop_loss:
+                #     self.sell_stop_loss(close)
+                # else:
+                #     self.sell(name="ENTRY SHORT Order")
                
                
         # Need to buy
@@ -539,26 +535,26 @@ class StochMACD(StrategyBase):
                         self.close_and_cancel_stops()
                         self.log('INTERIM REVERSAL BUY, %.2f' % self.dataclose[0])
 
-                        if should_trade_on_reversal:
-                            if should_stop_loss:
-                                self.buy_stop_loss(close)
-                            else:
-                                self.buy(name="ENTRY LONG Order")
+                        # if should_trade_on_reversal:
+                        #     if should_stop_loss:
+                        #         self.buy_stop_loss(close)
+                        #     else:
+                        #         self.buy(name="ENTRY LONG Order")
                     
             if should_buy:
                 self.close_and_cancel_stops()
                 self.log('REVERSAL BUY, %.2f' % self.dataclose[0])
                 
-                if should_stop_loss:                
-                    self.buy_stop_loss(close)
-                else:
-                    self.buy(name="ENTRY LONG Order")
+                # if should_stop_loss:                
+                #     self.buy_stop_loss(close)
+                # else:
+                #     self.buy(name="ENTRY LONG Order")
 
            
                 
         if self.position.size == 0:
             if should_buy:
-                self.close_and_cancel_stops()
+                # self.close_and_cancel_stops()
                 self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 
                 if should_stop_loss:
@@ -568,7 +564,7 @@ class StochMACD(StrategyBase):
             
 
             if should_sell:
-                self.close_and_cancel_stops()
+                # self.close_and_cancel_stops()
                 self.log('SELL CREATE, %.2f' % self.dataclose[0])
                 
                 if should_stop_loss:

@@ -28,10 +28,6 @@ def parse_args(pargs=None):
                         help=('Percentage of cash to use for each trade', 
                               '20 -> 20%%, 1 -> 1%%'))
 
-    # parser.add_argument('--cashalloc', required=False, action='store',
-    #                     type=float, default=0.20,
-    #                     help=('Perc (abs) of cash to allocate for ops'))
-
     parser.add_argument('--stake', required=False, action='store',
                         type=float, default=0.3,
                         help=('Amount of security to allocate for ops'))
@@ -41,9 +37,9 @@ def parse_args(pargs=None):
                         help=('Perc (abs) commision in each operation. '
                               '0.001 -> 0.1%%, 0.01 -> 1%%'))
 
-    parser.add_argument('--mult', required=False, action='store',
-                        type=int, default=5,
-                        help=('Multiplier when using margin'))
+    parser.add_argument('--leverage', required=False, action='store',
+                        type=float, default=5,
+                        help=('Leverage when using margin'))
 
     parser.add_argument('--margin', required=False, action='store',
                         type=float, default=1000,

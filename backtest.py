@@ -1,24 +1,19 @@
 import backtrader as bt
 from datetime import datetime
 
-from backtrader.cerebro import OptReturn
-from Commissions import CommInfo_Futures_Perc
+from Commissions import CommInfo_Futures_Perc_Mult
 from Parser import parse_args
 from Datasets import *
 from Strategies import StochMACD
+from utils import print_sqn, print_trade_analysis
 
 def runstrat(args=None):
     args = parse_args(args)
 
-    cerebro = bt.Cerebro(optreturn=(not args.optimize))
+    cerebro = bt.Cerebro(optreturn=(not args.optimize), quicknotify=True)
+    cerebro.broker.set_shortcash(False)
     cerebro.broker.set_cash(args.cash)
-    # comminfo = cerebro.broker.setcommission(commission=0.001)
-    comminfo = CommInfo_Futures_Perc(
-        commission=args.commperc,
-        mult=args.mult,
-        margin=args.margin  # Margin is needed for futures-like instruments
-    )
-    cerebro.broker.addcommissioninfo(comminfo)
+    cerebro.broker.setcommission(commission=0.00015, leverage=args.leverage)
 
     fromdate = datetime.strptime(args.fromdate, '%Y-%m-%d')
     todate = datetime.strptime(args.todate, '%Y-%m-%d')
@@ -43,7 +38,7 @@ def runstrat(args=None):
     cerebro.adddata(data)
 
     # cerebro.addsizer(bt.sizers.SizerFix, stake=args.stake)
-    cerebro.addsizer(bt.sizers.PercentSizer, percents=args.cashperc)
+    # cerebro.addsizer(bt.sizers.PercentSizer, percents=args.cashperc)
 
     # cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe_ratio', timeframe=bt.TimeFrame.Minutes, compression=60)
     # cerebro.addanalyzer(bt.analyzers.Returns, _name='returns', timeframe=bt.TimeFrame.Minutes, compression=60)
@@ -56,12 +51,12 @@ def runstrat(args=None):
 
         #   
         cerebro.optstrategy(StochMACD, 
-            # macd1=range(7, 12),
-            # macd2=range(14, 26),
-            # macdsig=range(5, 9),
-            macd1=9,
-            macd2=21,
-            macdsig=8,
+            macd1=range(7, 12),
+            macd2=range(14, 26),
+            macdsig=range(5, 9),
+            # macd1=9,
+            # macd2=21,
+            # macdsig=8,
             stoch_k_period=args.stoch_k_period,
             stoch_d_period=args.stoch_d_period,
             stoch_rsi_period=args.stoch_rsi_period,
@@ -72,8 +67,13 @@ def runstrat(args=None):
             rsi_lowerband=args.rsi_lowerband,
             atrperiod=args.atrperiod,
             # atrdist=args.atrdist,
+            # atrdist=range(1,10),
             atrdist=5,
-            reversal_sensitivity=20,
+            # reversal_sensitivity=range(1, 20),
+            reversal_sensitivity=19,
+            # leverage=args.leverage,
+            # leverage=(1,125),
+            leverage=5,
             loglevel=args.loglevel
         )
 
@@ -99,6 +99,7 @@ def runstrat(args=None):
                         strategy.p.macd2, 
                         strategy.p.macdsig, 
                         strategy.p.reversal_sensitivity, 
+                        strategy.p.leverage, 
                     ]
                 )
         sort_by_analyzer = sorted(final_results_list, key=lambda x: x[0], reverse=True)
@@ -120,12 +121,26 @@ def runstrat(args=None):
             rsi_lowerband=args.rsi_lowerband,
             atrperiod=args.atrperiod,
             atrdist=args.atrdist,
-            loglevel=args.loglevel
+            reversal_sensitivity=args.reversal_sensitivity,
+            loglevel=args.loglevel,
+            leverage=args.leverage,
+            cashperc=args.cashperc,
         )
 
-        print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-        cerebro.run()
-        print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+        cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
+        cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
+        cerebro.addobserver(bt.observers.Value)
+
+        initial_value = cerebro.broker.getvalue()
+        print('Starting Portfolio Value: %.2f' % initial_value)
+        result = cerebro.run()
+
+        # Print analyzers - results
+        final_value = cerebro.broker.getvalue()
+        print('Final Portfolio Value: %.2f' % final_value)
+        print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
+        # print_trade_analysis(result[0].analyzers.ta.get_analysis())
+        # print_sqn(result[0].analyzers.sqn.get_analysis())
 
         if args.plot:
             cerebro.plot()
