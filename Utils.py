@@ -3,6 +3,7 @@ from datetime import datetime
 from config import ENV
 from Telegram import Telegram_Bot
 
+
 def get_formatted_datetime(unix, format='%Y-%m-%d %H:%M:%S'):
     return datetime.utcfromtimestamp(unix).strftime(format)
 

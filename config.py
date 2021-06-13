@@ -65,4 +65,5 @@ TELEGRAM = {
   "bot": os.environ.get("TELEGRAM_BOT_KEY")
 }
 
-print("ENV = ", ENV)
+if ENV == PRODUCTION:
+  print("ENV = ", ENV)

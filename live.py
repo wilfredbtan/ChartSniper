@@ -137,14 +137,15 @@ def main():
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
     # Include Strategy
-    # cerebro.addstrategy(StochMACD,
-    #                     macd1=9,
-    #                     macd2=21,
-    #                     macdsig=8,
-    #                     atrdist=5,
-    #                     reversal_sensitivity=18,
-    #                     cashperc=cashperc,
-    #                     leverage=leverage)
+    cerebro.addstrategy(StochMACD,
+                        macd1=9,
+                        macd2=21,
+                        macdsig=8,
+                        atrdist=5,
+                        reversal_sensitivity=18,
+                        cashperc=cashperc,
+                        short_perc=1,
+                        leverage=leverage)
 
     cerebro.addstrategy(TESTBUY,
                         cashperc=cashperc,

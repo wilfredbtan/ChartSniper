@@ -104,6 +104,10 @@ def parse_args(pargs=None):
                         help=('Sensitivity for a reversal in Stoch RSI to be recognized', 
                         'Calculated as fastk - fastk'))
 
+    parser.add_argument('--short_perc', required=False, action='store',
+                        type=float, default=50,
+                        help=('Percentage to short out of intended position'))
+
     parser.add_argument('--plot', '-p', action='store_true',
                     help='Plot the read data')
 

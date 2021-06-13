@@ -3,15 +3,7 @@ import os
 bear_date='--fromdate 2018-2-1 --todate 2019-2-1'
 crab_date='--fromdate 2019-5-12 --todate 2020-5-12'
 bull_date='--fromdate 2020-6-9 --todate 2021-6-9'
-
-# print("Bear")
-# os.system(f'python3 backtest.py -o {bear_date}')
-# print("Crab")
-# os.system(f'python3 backtest.py -o {crab_date}')
-# print("Bull")
-# os.system(f'python3 backtest.py -o {bull_date}')
-# print("All")
-# os.system(f'python3 backtest.py -o')
+test_date='--fromdate 2018-1-20 --todate 2019-3-10'
 
 '''Reversal Sensitivity (MACD 9 21 8)'''
 '''Thesis: A higher sensitivity works better in Bear and Bull markets. In Crab markets, lower sensitivity is better'''
@@ -97,30 +89,12 @@ bull_date='--fromdate 2020-6-9 --todate 2021-6-9'
 # [0.002255731406488645, 9218.39, 5.0, 9, 22, 8]
 # [0.0022306759365417917, 9018.59, 5.0, 10, 21, 7]
 
-'''Optimize for ATR Dist (stop loss). 5 seems the best'''
-    # From 2018
-# [0.006238160707605604, 18257.07, 3, 9, 21, 8]
-# [0.0060935861363389, 17314.97, 5, 9, 21, 8]
-# [0.005703345674420665, 14954.11, 6, 9, 21, 8]
-# [0.005636240010576195, 14574.94, 7, 9, 21, 8]
-# [0.005598026217405897, 14360.11, 4, 9, 21, 8]
 
-    # From 2019
-# [0.004006155367781593, 33566.28, 13, 9, 21, 8]
-# [0.003799702182121598, 29330.16, 5, 9, 21, 8]
-# [0.0037421759269827023, 28230.39, 14, 9, 21, 8]
-# [0.003465500011171479, 23395.88, 7, 9, 21, 8]
-# [0.003263669278174703, 20304.24, 8, 9, 21, 8]
-
-# Default
-# macd = '--macd1 12 --macd2 26 --macdsig 9'
-# 2018
-# macd = '--macd1 11 --macd2 25 --macdsig 5'
-# 2019
-# macd = '--macd1 9 --macd2 23 --macdsig 8'
 # All time
-# macd = '--macd1 9 --macd2 21 --macdsig 8'
-macd = '--macd1 10 --macd2 16 --macdsig 5'
+# Buggy leverage
+macd = '--macd1 9 --macd2 21 --macdsig 8' # Does even better when shorts are divided by 2 and is buggy lol
+# Actual
+# macd = '--macd1 10 --macd2 16 --macdsig 5'
 
 atrdist = '--atrdist 5'
 # atrdist = '--atrdist 3'
@@ -137,29 +111,201 @@ leverage = '--leverage 5'
 
 # reversal_sensitivity = '--reversal_sensitivity 20'
 reversal_sensitivity = '--reversal_sensitivity 19'
+# reversal_sensitivity = '--reversal_sensitivity 0'
 
-
-# Optimized
-# os.system(f'python3 backtest.py {macd} --fromdate 2019-5-1 --todate 2021-5-1 {atrdist}')
-# os.system(f'python3 backtest.py {macd} --fromdate 2018-4-1 --todate 2019-4-1 {atrdist}')
-# os.system(f'python3 backtest.py {macd} {atrdist}')
-
-date = bear_date
+# date = bear_date
 # date = crab_date
 # date = bull_date
 # date = ''
 
+short_perc = '--short_perc 1'
+
+
+# Optimization
+# print("Bear")
+# os.system(f'python3 backtest.py -o {bear_date}')
+# print("Crab")
+# os.system(f'python3 backtest.py -o {crab_date}')
+# print("Bull")
+# os.system(f'python3 backtest.py -o {bull_date}')
+# print("All")
+# os.system(f'python3 backtest.py -o')
+# print("Test")
+# os.system(f'python3 backtest.py -o {test_date}')
+
 #Best so far
 # Dividing short amount by 2 makes the profit much higher. Maybe more reliable for longs
-print("===== Bear =====")
-os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bear_date} -v')
+# print("===== Bear =====")
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bear_date} {reversal_sensitivity} {short_perc}')
 # print("===== Crab =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {crab_date}')
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {crab_date} {reversal_sensitivity} {short_perc}')
 # print("===== Bull =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bull_date}')
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bull_date} {reversal_sensitivity} {short_perc}')
 # print("===== All =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage}')
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity} ')
+print("===== Test =====")
+os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {test_date}')
 
-# python3 backtest.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --leverage 5
-# python3 backtest.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --leverage 5 --fromdate 2019-5-1 --todate 2021-5-1 
-# python3 backtest.py --macd1 9 --macd2 21 --macdsig 8 --atrdist 5 --leverage 5 --fromdate 2018-4-1 --todate 2019-4-1
+'''
+### Short percentage
+======= Non-Buggy Code (invests 50% of cash AFTER closing) =======
+MACD 10, 16, 5
+
+Bear:
+[0.002426131419722992, 3111.21, 37]
+[0.002425724241959075, 3110.35, 36]
+[0.0024255557450334163, 3110.08, 38]
+[0.0024243380393475632, 3107.53, 35]
+[0.002423992847714904, 3106.98, 39]
+
+Crab:
+[0.010754108932875994, 77363.39, 99]
+[0.010740809579583142, 77069.55, 98]
+[0.010727048039014213, 76766.55, 97]
+[0.010712824323291879, 76454.48, 96]
+[0.010698138423723582, 76133.45, 95]
+
+Bull:
+[0.0019911886779043616, 5087.2, 79]
+[0.0019911164798004093, 5086.99, 78]
+[0.0019911006198658995, 5086.94, 80]
+[0.001990885077401584, 5086.29, 77]
+[0.0019908512568285854, 5086.2, 81]
+
+All:
+[0.004769127724817423, 305745.36, 62]
+[0.004768957552490342, 305701.86, 63]
+[0.0047687326137722365, 305643.74, 61]
+[0.004768218457123885, 305512.36, 64]
+[0.0047677757195374055, 305398.04, 60]
+
+======= Buggy Code (invests 50% of remaining cash BEFORE closing) ========
+MACD 9, 21, 8
+
+Bear:
+[0.00594613012457821, 16394.62, 53]
+[0.005945951537581754, 16393.63, 52]
+[0.005945513398944423, 16390.75, 54]
+[0.0059449848770483475, 16387.8, 51]
+[0.00594409379260695, 16381.96, 55]
+
+Bear + 4 mths offset: (CRAB)
+[0.011084137810392088, 84188.41, 88]
+[0.011084082819054129, 84187.12, 89]
+[0.011084037836962475, 84186.01, 87]
+[0.011083872841446461, 84182.16, 90]
+[0.011083782912085812, 84179.94, 86]
+
+Bear + 10 mths offset: (BULL)
+[0.00966615119725151, 55839.12, 1]
+[0.009653202023853493, 55624.52, 2]
+[0.00964016127093701, 55409.12, 3]
+[0.009627027061954256, 55192.9, 4]
+[0.009613797515847329, 54975.84, 5]
+
+Crab:
+[0.00691370360403633, 23376.83, 1]
+[0.006877284107558368, 23083.12, 2]
+[0.006840857763851995, 22792.29, 3]
+[0.006804422747411869, 22504.3, 4]
+[0.006767977222510569, 22219.12, 5]
+
+Crab + 7 mths offset: (BEAR to start of BULL)
+[0.004306866740012978, 8452.57, 1]
+[0.004252811030908962, 8249.49, 2]
+[0.004198546126729481, 8049.05, 3]
+[0.00414406565746612, 7851.22, 4]
+[0.004089362992559101, 7655.97, 5]
+
+Bull:
+[0.006090978579890741, 16923.43, 1]
+[0.006070469092223557, 16796.24, 2]
+[0.006049963644451918, 16669.8, 3]
+[0.0060294606844541925, 16544.11, 4]
+[0.006008958648571697, 16419.14, 5]
+
+All:
+[0.006824609430332208, 1596735.91, 1]
+[0.006810334174131253, 1579133.46, 2]
+[0.0067957805859195355, 1561380.77, 3]
+[0.006780948497874229, 1543486.65, 4]
+[0.006765837687587215, 1525459.87, 5]
+
+
+Single Values:
+======== Buggy =========
+
+### 1 perc
+===== Bear =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 16225.48
+Profit 224.510%
+===== Crab =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 29699.76
+Profit 493.995%
+===== Bull =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 21018.11
+Profit 320.362%
+===== All =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 1599219.79
+Profit 31884.396%
+
+### 99 perc
+===== Bear =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 15746.93
+Profit 214.939%
+===== Crab =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 14710.18
+Profit 194.204%
+===== Bull =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 10994.35
+Profit 119.887%
+===== All =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 214777.96
+Profit 4195.559%
+
+
+======= Non-buggy =======
+### 1 perc
+===== Bear =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 6962.76
+Profit 39.255%
+===== Crab =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 19668.45
+Profit 293.369%
+===== Bull =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 8751.48
+Profit 75.030%
+===== All =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 85215.72
+Profit 1604.314%
+
+### 99 perc
+===== Bear =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 4609.37
+Profit -7.813%
+===== Crab =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 81993.41
+Profit 1539.868%
+===== Bull =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 10013.29
+Profit 100.266%
+===== All =====
+Starting Portfolio Value: 5000.00
+Final Portfolio Value: 214252.60
+Profit 4185.052%
+'''
