@@ -7,7 +7,7 @@ def test_strategies(dataset, cash, period, parameter_sets):
     for parameter_set in parameter_sets:
         result = run_strategy(dataset, period[0], period[1], cash, **parameter_set)
         results.append(result)
-    return result
+    return results
 
 def run_strategy(dataset, fromdate, todate, cash, **kwargs):
     cerebro = bt.Cerebro(optreturn=False, quicknotify=True)
@@ -42,14 +42,20 @@ def run_strategy(dataset, fromdate, todate, cash, **kwargs):
 
     PnL = round(strategy.broker.get_value() - cash, 2)
     sqn = strategy.analyzers.sqn.get_analysis()
-    return [
-        sqn['sqn'],
-        sqn['trades'],
-        PnL,
-        strategy.p.atrdist,
-        strategy.p.macd1,
-        strategy.p.macd2,
-        strategy.p.macdsig,
-        strategy.p.reversal_sensitivity,
-        strategy.p.short_perc,
-    ]
+    return {
+        'sqn': sqn['sqn'],
+        'trades': sqn['trades'],
+        'pnl': PnL, 
+        'params': strategy.p
+    }
+    # return [
+    #     sqn['sqn'],
+    #     sqn['trades'],
+    #     PnL,
+    #     # strategy.p.atrdist,
+    #     # strategy.p.macd1,
+    #     # strategy.p.macd2,
+    #     # strategy.p.macdsig,
+    #     # strategy.p.reversal_sensitivity,
+    #     # strategy.p.short_perc,
+    # ]

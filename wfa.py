@@ -1,3 +1,4 @@
+from excelwriter import get_df_row, save_dataframe_to_excel
 import os
 from pprint import pprint
 import datetime as dt
@@ -23,6 +24,9 @@ algo_name = "stoch_macd_halfhalf"
 algo_directory = os.path.join(wfa_directory, algo_name)
 os.makedirs(algo_directory, exist_ok=True)
 
+my_columns = ['In/Out', 'Start Date', 'End Date', 'SQN', 'Trades', 'PnL']
+rows = []
+
 '''
 ((in_sample_fromdate, period (months)), (out_sample_fromdate, period(months)))
 '''
@@ -43,6 +47,8 @@ def run_wfa():
         out_sample_date = current_sample_date + relativedelta(months=+months_in)
         out_period = (out_sample_date, out_sample_date + relativedelta(months=+months_out))
 
+        param_names = ['sqn', 'trades', 'pnl', 'macd1', 'macd2', 'macdsig', 'atrdist', 'reversal_sensitivity', 'short_perc']
+
         print(f"=== optimization period {in_period[0]} to {in_period[1]}")
 
         optimized_results = optimize_strategy(
@@ -53,29 +59,37 @@ def run_wfa():
             macd1=range(7, 12),
             macd2=range(14, 26),
             macdsig=range(5, 9),
+            # macd1=9,
+            # macd2=21,
+            # macdsig=8,
             # atrdist=range(1,10),
             # reversal_sensitivity=range(1, 20),
             reversal_sensitivity=19,
-            # short_perc=range(1,100),
+            short_perc=1,
             leverage=5,
         )
 
         print("Top results")
-        for line in optimized_results:
-            print("sqn", line['sqn'])
-            print("trades", line['trades'])
-            print("pnl", line['pnl'])
-            print("params", line['params'])
+        for result in optimized_results:
+            print("sqn", result['sqn'])
+            print("trades", result['trades'])
+            print("pnl", result['pnl'])
+            print("params", result['params'].__dict__)
+            row = get_df_row(result, param_names)
+            print(row)
 
         # save_opt_results(optimized_results)
         
         print(f"=== Test period {out_period[0]} to {out_period[1]}")
 
-        optimized_params = map(lambda x: x['params'], optimized_results)
+        optimized_params = map(lambda x: x['params'].__dict__, optimized_results)
         test_results = test_strategies(dataset, cash, out_period, optimized_params)
 
-        for line in test_results:
-            print(line)
+        for result in test_results:
+            print("sqn", result['sqn'])
+            print("trades", result['trades'])
+            print("pnl", result['pnl'])
+            print("params", result['params'].__dict__)
 
         # save_out_results(out_results)
 
