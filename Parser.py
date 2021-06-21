@@ -11,6 +11,10 @@ def parse_args(pargs=None):
                         default='btc_hourly', choices=DATASETS.keys(),
                         help='Choose one of the predefined data sets')
 
+    parser.add_argument('--dataset2', required=False, action='store',
+                        default='btc_minute', choices=DATASETS.keys(),
+                        help='Choose one of the predefined data sets')
+
     parser.add_argument('--fromdate', required=False,
                         default='2018-02-01',
                         help='Starting date in YYYY-MM-DD format')

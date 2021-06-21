@@ -158,9 +158,11 @@ class StrategyBase(bt.Strategy):
             close_order.addinfo(name="CLOSE")
         if len(self.stop_orders) > 0:
             # if len(self.stop_orders) > 1:
-            #     for oref in self.stop_orders.keys():
-            #         print("-- remove ref: ", oref)
-            #     print("Number of stop orders: ", len(self.stop_orders))
+            #     print("NO")
+            for oref in self.stop_orders.keys():
+                # print("-- remove ref: ", oref)
+                self.cancel(self.stop_orders[oref])
+            # print("Number of stop orders: ", len(self.stop_orders))
             self.stop_orders = {}
 
     def sell_stop_loss(self, close):
@@ -227,8 +229,14 @@ class StrategyBase(bt.Strategy):
         if color:
             log_txt = colored(txt, color)
 
-        dt = dt or self.datas[0].datetime.date(0)
-        hh = self.datas[0].datetime.time()
+        # dt = dt or self.datas[0].datetime.date(0)
+        # hh = self.datas[0].datetime.time()
+        if len(self.datas) > 1:
+            dt = dt or self.datas[1].datetime.date(0)
+            hh = self.datas[1].datetime.time()
+        else:
+            dt = dt or self.datas[0].datetime.date(0)
+            hh = self.datas[0].datetime.time()
 
         logging.log(level, '%s %s, %s' % (dt.isoformat(), hh, log_txt))
 
@@ -303,9 +311,9 @@ class TESTBUY(StrategyBase):
         #     raise
     
         self.macd = bt.indicators.MACD(self.data,
-                               period_me1=self.p.macd1,
-                               period_me2=self.p.macd2,
-                               period_signal=self.p.macdsig)
+                                       period_me1=self.p.macd1,
+                                       period_me2=self.p.macd2,
+                                       period_signal=self.p.macdsig)
 
         # Cross of macd.macd and macd.signal
         self.mcross = bt.indicators.CrossOver(self.macd.macd, self.macd.signal)
@@ -321,7 +329,6 @@ class TESTBUY(StrategyBase):
 
     def next(self):
         close = self.dataclose[0]
-
         # print("Values: ")
         # print("self.mcross[0]", self.mcross[0])
         # print("self.stochrsi.l.fastk[-3]", self.stochrsi.l.fastk[-3])
@@ -414,27 +421,45 @@ class StochMACD(StrategyBase):
 
     def __init__(self):
         StrategyBase.__init__(self)
+
+        print("===== INIT =====")
+
         logging.basicConfig(level=self.p.loglevel, force=True)
         self.dataclose = self.datas[0].close
         
         self.stop_order = None
         
-        self.macd = MACD(self.data,
-                               period_me1=self.p.macd1,
-                               period_me2=self.p.macd2,
-                               period_signal=self.p.macdsig)
+        self.macd = MACD(
+            self.datas[0],
+            period_me1=self.p.macd1,
+            period_me2=self.p.macd2,
+            period_signal=self.p.macdsig
+        )
 
         # Cross of macd.macd and macd.signal
         self.mcross = bt.indicators.CrossOver(self.macd.macd, self.macd.signal)
         
-        self.atr = bt.indicators.ATR(self.data, period=self.p.atrperiod)
+        self.atr = bt.indicators.ATR(self.datas[0], period=self.p.atrperiod)
 
-        self.stochrsi = StochasticRSI(k_period=self.p.stoch_k_period,
-                                      d_period=self.p.stoch_d_period,
-                                      rsi_period=self.p.stoch_rsi_period,
-                                      stoch_period=self.p.stoch_period,
-                                      upperband=self.p.stoch_upperband,
-                                      lowerband=self.p.stoch_lowerband)
+        self.stochrsi = StochasticRSI(
+            self.datas[0],
+            k_period=self.p.stoch_k_period,
+            d_period=self.p.stoch_d_period,
+            rsi_period=self.p.stoch_rsi_period,
+            stoch_period=self.p.stoch_period,
+            upperband=self.p.stoch_upperband,
+            lowerband=self.p.stoch_lowerband
+        )
+
+        # self.st_stochrsi = StochasticRSI(
+        #     self.datas[1],
+        #     k_period=self.p.stoch_k_period,
+        #     d_period=self.p.stoch_d_period,
+        #     rsi_period=self.p.stoch_rsi_period,
+        #     stoch_period=self.p.stoch_period,
+        #     upperband=self.p.stoch_upperband,
+        #     lowerband=self.p.stoch_lowerband
+        # )
 
     def get_params_for_time(self):
         dd = self.datas[0].datetime.date(0)
@@ -457,15 +482,46 @@ class StochMACD(StrategyBase):
             self.log(f'Params changed to: {self.sorted_params[self.interval_index][1]}', level=logging.WARNING)
         return self.sorted_params[self.interval_index][1]
 
+    # def nextstart(self):
+    #     print('--------------------------------------------------')
+    #     print('nextstart called with len', len(self))
+    #     print('--------------------------------------------------')
+
+    #     super(StochMACD, self).nextstart()
+
     def next(self):        
         close = self.dataclose[0]
         currentStochRSI = self.stochrsi.l.fastk[0]
 
+        # print("===== Values: =====")
+        # dt = self.datas[1].datetime.datetime()
+        # print(dir(self.datas[1].datetime))
+        # print(self.datas[1].datetime.datetime())
+        # print(self.datas[1].datetime.dt())
+        # print(self.datas[1].datetime.tm_raw())
+        # print(self.datas[1].datetime.tm())
+        # print(self.datas[1].datetime.tm2datetime())
+        # print(self.datas[1].datetime.tm2dtime())
+        if len(self.datas) > 1:
+            time_str = self.datas[1].datetime.time().strftime('%H:%M:%S')
+            # print(time_str)
+            hours = int(time_str.split(':')[1])
+            # print("hours: ", hours)
+            # print(f"datetime: {dt}")
+            # if self.datas[1].datetime.time() % 60 == 0:
+            if hours != 0:
+                return
+
+        # print("is hourly")
+        # dt = self.datas[1].datetime.date(0)
+        # hh = self.datas[1].datetime.time()
+        # print(f"datetime: {dt} {hh}")
+
+
         # if self.status == "LIVE":
         # print("===== Values: =====")
-        # dt = self.datas[0].datetime.date(0)
-        # hh = self.datas[0].datetime.time()
-        # print(f"datetime: {dt} {hh}")
+        # dt = self.datas[1].datetime.datetime()
+        # print(f"datetime: {dt}")
         # print("self.macd[0]                ", self.macd[0])
         # print("self.mcross[0]              ", self.mcross[0])
         # print("self.stochrsi.l.fastk[-3]   ", self.stochrsi.l.fastk[-3])
@@ -514,6 +570,7 @@ class StochMACD(StrategyBase):
         should_buy = (
             self.mcross[0] > 0.0 and
             # macd_should_buy and
+            self.stochrsi.l.fastk[-4] < self.p.stoch_lowerband and 
             self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband and 
             self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband and 
             self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband and 
@@ -528,6 +585,7 @@ class StochMACD(StrategyBase):
         should_sell = (
             self.mcross[0] < 0.0 and
             # macd_should_sell and
+            self.stochrsi.l.fastk[-4] > self.p.stoch_upperband and 
             self.stochrsi.l.fastk[-3] > self.p.stoch_upperband and 
             self.stochrsi.l.fastk[-2] > self.p.stoch_upperband and 
             self.stochrsi.l.fastk[-1] > self.p.stoch_upperband and 
@@ -681,7 +739,7 @@ class WfaStochMACD(StrategyBase):
 
         self.stop_order = None
         
-        self.macd = MACD(self.data,
+        self.macd = MACD(self.datas[0],
                          period_me1=self.params_to_use['macd1'],
                          period_me2=self.params_to_use['macd2'],
                          period_signal=self.params_to_use['macdsig'])
@@ -689,7 +747,7 @@ class WfaStochMACD(StrategyBase):
         # Cross of macd.macd and macd.signal
         self.mcross = bt.indicators.CrossOver(self.macd.macd, self.macd.signal)
         
-        self.atr = bt.indicators.ATR(self.data, period=self.params_to_use['atrperiod'])
+        self.atr = bt.indicators.ATR(self.datas[0], period=self.params_to_use['atrperiod'])
 
         self.stochrsi = StochasticRSI(k_period=self.params_to_use['stoch_k_period'],
                                    d_period=self.params_to_use['stoch_d_period'],

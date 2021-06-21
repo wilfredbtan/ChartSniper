@@ -118,7 +118,8 @@ reversal_sensitivity = '--reversal_sensitivity 19'
 # date = bull_date
 # date = all_date
 # date = ''
-date = '--fromdate 2019-2-2 --todate 2021-5-1'
+# date = '--fromdate 2019-2-2 --todate 2021-5-1'
+date = '--fromdate 2019-9-8 --todate 2021-5-1'
 
 short_perc = '--short_perc 1'
 
@@ -137,16 +138,16 @@ short_perc = '--short_perc 1'
 
 #Best so far
 # Dividing short amount by 2 makes the profit much higher. Maybe more reliable for longs
-print("===== Bear =====")
-os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bear_date} {reversal_sensitivity} {short_perc}')
-print("===== Crab =====")
-os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {crab_date} {reversal_sensitivity} {short_perc}')
-print("===== Bull =====")
-os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bull_date} {reversal_sensitivity} {short_perc}')
-print("===== All =====")
-os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity}')
-# print("===== Test =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {date}')
+# print("===== Bear =====")
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bear_date} {reversal_sensitivity} {short_perc}')
+# print("===== Crab =====")
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {crab_date} {reversal_sensitivity} {short_perc}')
+# print("===== Bull =====")
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bull_date} {reversal_sensitivity} {short_perc}')
+# print("===== All =====")
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity}')
+print("===== Test =====")
+os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {date} -v')
 
 '''
 ### Short percentage

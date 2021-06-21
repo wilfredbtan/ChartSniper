@@ -18,9 +18,9 @@ def runstrat(args=None):
     fromdate = datetime.strptime(args.fromdate, '%Y-%m-%d')
     todate = datetime.strptime(args.todate, '%Y-%m-%d')
 
-    dataname = DATASETS.get(args.dataset)
+    dataname1 = DATASETS.get(args.dataset)
     data = bt.feeds.GenericCSVData(
-        dataname=dataname,
+        dataname=dataname1,
         fromdate=fromdate,
         todate=todate,
         timeframe=bt.TimeFrame.Minutes,
@@ -35,8 +35,26 @@ def runstrat(args=None):
         headers=True,
     )
 
+    dataname2 = DATASETS.get(args.dataset2)
+    data2 = bt.feeds.GenericCSVData(
+        dataname=dataname2,
+        fromdate=fromdate,
+        todate=todate,
+        timeframe=bt.TimeFrame.Minutes,
+        nullvalue=0.0,
+        datetime=0,
+        open=4,
+        high=5,
+        low=6,
+        close=7,
+        volume=8,
+        # compression=15,
+        headers=True,
+    )
+
     cerebro.adddata(data)
-    # cerebro.resampledata(dataname=data, timeframe=bt.TimeFrame.Minutes, compression=240)
+    cerebro.adddata(data2)
+    # cerebro.resampledata(dataname=data2, timeframe=bt.TimeFrame.Minutes, compression=15)
 
     # cerebro.addsizer(bt.sizers.SizerFix, stake=args.stake)
     # cerebro.addsizer(bt.sizers.PercentSizer, percents=args.cashperc)
@@ -135,9 +153,9 @@ def runstrat(args=None):
         result = cerebro.run()
 
         # Print analyzers - results
-        final_value = cerebro.broker.getvalue()
-        print('Final Portfolio Value: %.2f' % final_value)
-        print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
+        # final_value = cerebro.broker.getvalue()
+        # print('Final Portfolio Value: %.2f' % final_value)
+        # print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
         print_trade_analysis(result[0].analyzers.ta.get_analysis())
         print_sqn(result[0].analyzers.sqn.get_analysis())
 
