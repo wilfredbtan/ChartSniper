@@ -45,3 +45,10 @@ class StochasticRSI(Indicator):
 
         self.l.fastk = k = self.p.movav(100.0 * stochrsi, period=self.p.k_period)
         self.l.fastd = self.p.movav(k, period=self.p.d_period)
+
+class MACD(bt.indicators.MACD):
+
+    def changeParams(self, period_me1, period_me2, period_signal):
+        self.p.period_me1 = period_me1
+        self.p.period_me2 = period_me2
+        self.p.period_signal = period_signal

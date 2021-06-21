@@ -3,7 +3,7 @@ import os
 bear_date='--fromdate 2018-2-1 --todate 2019-2-1'
 crab_date='--fromdate 2019-5-12 --todate 2020-5-12'
 bull_date='--fromdate 2020-6-9 --todate 2021-6-9'
-test_date='--fromdate 2018-1-20 --todate 2019-3-10'
+all_date='--fromdate 2018-1-20 --todate 2021-6-9'
 
 '''Reversal Sensitivity (MACD 9 21 8)'''
 '''Thesis: A higher sensitivity works better in Bear and Bull markets. In Crab markets, lower sensitivity is better'''
@@ -116,7 +116,9 @@ reversal_sensitivity = '--reversal_sensitivity 19'
 # date = bear_date
 # date = crab_date
 # date = bull_date
+# date = all_date
 # date = ''
+date = '--fromdate 2019-2-2 --todate 2021-5-1'
 
 short_perc = '--short_perc 1'
 
@@ -135,16 +137,16 @@ short_perc = '--short_perc 1'
 
 #Best so far
 # Dividing short amount by 2 makes the profit much higher. Maybe more reliable for longs
-# print("===== Bear =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bear_date} {reversal_sensitivity} {short_perc}')
-# print("===== Crab =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {crab_date} {reversal_sensitivity} {short_perc}')
-# print("===== Bull =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bull_date} {reversal_sensitivity} {short_perc}')
-# print("===== All =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity} ')
-print("===== Test =====")
-os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {test_date}')
+print("===== Bear =====")
+os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bear_date} {reversal_sensitivity} {short_perc}')
+print("===== Crab =====")
+os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {crab_date} {reversal_sensitivity} {short_perc}')
+print("===== Bull =====")
+os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bull_date} {reversal_sensitivity} {short_perc}')
+print("===== All =====")
+os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity}')
+# print("===== Test =====")
+# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {date}')
 
 '''
 ### Short percentage

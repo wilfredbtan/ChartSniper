@@ -1,9 +1,7 @@
 import backtrader as bt
 from backtrader.dataseries import TimeFrame
 from Datasets import *
-from Strategies import StochMACD
-
-def optimize_strategy(dataset, fromdate, todate, cash, **kwargs):
+def optimize_strategy(strategy, dataset, fromdate, todate, cash, **kwargs):
     cerebro = bt.Cerebro(optreturn=False, quicknotify=True)
     cerebro.broker.set_shortcash(False)
     cerebro.broker.set_cash(cash)
@@ -30,7 +28,7 @@ def optimize_strategy(dataset, fromdate, todate, cash, **kwargs):
 
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
-    cerebro.optstrategy(StochMACD, **kwargs)
+    cerebro.optstrategy(strategy, **kwargs)
 
     optimized_runs = cerebro.run()
 

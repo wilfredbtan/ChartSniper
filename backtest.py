@@ -4,7 +4,7 @@ from datetime import datetime
 from Commissions import CommInfo_Futures_Perc_Mult
 from Parser import parse_args
 from Datasets import *
-from Strategies import StochMACD
+from Strategies import StochMACD, WfaStochMACD
 from utils import print_sqn, print_trade_analysis
 
 def runstrat(args=None):
@@ -36,13 +36,14 @@ def runstrat(args=None):
     )
 
     cerebro.adddata(data)
+    # cerebro.resampledata(dataname=data, timeframe=bt.TimeFrame.Minutes, compression=240)
 
     # cerebro.addsizer(bt.sizers.SizerFix, stake=args.stake)
     # cerebro.addsizer(bt.sizers.PercentSizer, percents=args.cashperc)
 
     # cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe_ratio', timeframe=bt.TimeFrame.Minutes, compression=60)
     # cerebro.addanalyzer(bt.analyzers.Returns, _name='returns', timeframe=bt.TimeFrame.Minutes, compression=60)
-    cerebro.addanalyzer(bt.analyzers.VWR, _name='vwr', timeframe=bt.TimeFrame.Minutes, compression=60)
+    # cerebro.addanalyzer(bt.analyzers.VWR, _name='vwr', timeframe=bt.TimeFrame.Minutes, compression=60)
 
     if args.optimize:
         # cerebro = bt.Cerebro(optreturn=False)
@@ -103,6 +104,7 @@ def runstrat(args=None):
 
     else:
         cerebro.addstrategy(StochMACD, 
+            # interval_params=interval_params,
             macd1=args.macd1,
             macd2=args.macd2,
             macdsig=args.macdsig,
@@ -121,6 +123,7 @@ def runstrat(args=None):
             loglevel=args.loglevel,
             leverage=args.leverage,
             cashperc=args.cashperc,
+            isWfa=False,
         )
 
         cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
@@ -135,8 +138,8 @@ def runstrat(args=None):
         final_value = cerebro.broker.getvalue()
         print('Final Portfolio Value: %.2f' % final_value)
         print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
-        # print_trade_analysis(result[0].analyzers.ta.get_analysis())
-        # print_sqn(result[0].analyzers.sqn.get_analysis())
+        print_trade_analysis(result[0].analyzers.ta.get_analysis())
+        print_sqn(result[0].analyzers.sqn.get_analysis())
 
         if args.plot:
             cerebro.plot()
