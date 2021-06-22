@@ -66,7 +66,7 @@ def run_wfa():
             # macdsig=8,
             # atrdist=range(1,10),
             # reversal_sensitivity=range(1, 20),
-            reversal_sensitivity=19,
+            reversal_sensitivity=17,
             short_perc=1,
             leverage=5,
         )

@@ -23,7 +23,7 @@ def reverse_and_clean(input_name, output_name):
     df.set_index('datetime', inplace=True)
     df.to_csv(output_name)
 
-reverse_and_clean(input_name='./crypto/Binance_BTCUSDT_minute.csv', output_name='./crypto/reversed_BTC_minute.csv')
+# reverse_and_clean(input_name='./crypto/Binance_BTCUSDT_minute.csv', output_name='./crypto/reversed_BTC_minute.csv')
 
 def print_trade_analysis(analyzer):
     # Get the results we are interested in

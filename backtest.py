@@ -1,4 +1,5 @@
 import backtrader as bt
+import time
 from datetime import datetime
 
 from Commissions import CommInfo_Futures_Perc_Mult
@@ -53,22 +54,10 @@ def runstrat(args=None):
     )
 
     cerebro.adddata(data)
-    cerebro.adddata(data2)
+
     # cerebro.resampledata(dataname=data2, timeframe=bt.TimeFrame.Minutes, compression=15)
 
-    # cerebro.addsizer(bt.sizers.SizerFix, stake=args.stake)
-    # cerebro.addsizer(bt.sizers.PercentSizer, percents=args.cashperc)
-
-    # cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe_ratio', timeframe=bt.TimeFrame.Minutes, compression=60)
-    # cerebro.addanalyzer(bt.analyzers.Returns, _name='returns', timeframe=bt.TimeFrame.Minutes, compression=60)
-    # cerebro.addanalyzer(bt.analyzers.VWR, _name='vwr', timeframe=bt.TimeFrame.Minutes, compression=60)
-
     if args.optimize:
-        # cerebro = bt.Cerebro(optreturn=False)
-        # cerebro.optstrategy(MAcrossover, pfast=range(5, 20), pslow=range(50, 100))  
-        # cerebro.optstrategy(StochRSI, stoch_upperband=range(75,80), stoch_lowerband=range(20,25))
-
-        #   
         cerebro.optstrategy(StochMACD, 
             # macd1=range(7, 12),
             # macd2=range(14, 26),
@@ -82,13 +71,18 @@ def runstrat(args=None):
             # atrdist=range(1,10),
             atrdist=5,
             # reversal_sensitivity=range(1, 20),
-            reversal_sensitivity=19,
+            reversal_sensitivity=17,
+            reversal_lowerband=range(40,50),
+            reversal_upperband=range(50,60),
             # leverage=args.leverage,
             # leverage=(1,125),
             # short_perc=range(1,100),
-            short_perc=1,
+            # short_perc=1,
             leverage=5,
+            isWfa=False,
         )
+        
+        cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
         optimized_runs = cerebro.run()
 
@@ -96,23 +90,18 @@ def runstrat(args=None):
 
         for run in optimized_runs:
             for strategy in run:
+                sqn = strategy.analyzers.sqn.get_analysis()
                 PnL = round(strategy.broker.get_value() - args.cash, 2)
-                # sharpe = strategy.analyzers.sharpe_ratio.get_analysis()
-                # returns = strategy.analyzers.returns.get_analysis()
-                vwr = strategy.analyzers.vwr.get_analysis()
                 final_results_list.append(
                     [
-                        vwr['vwr'],
-                        # returns['rtot'],
-                        # returns['ravg'],
-                        # sharpe['sharperatio']
+                        sqn['sqn'],
                         PnL, 
                         # strategy.p.atrdist,
                         # strategy.p.macd1, 
                         # strategy.p.macd2, 
                         # strategy.p.macdsig, 
-                        # strategy.p.reversal_sensitivity, 
-                        strategy.p.short_perc,
+                        strategy.p.reversal_sensitivity, 
+                        # strategy.p.short_perc,
                         # strategy.p.leverage, 
                     ]
                 )
@@ -153,9 +142,9 @@ def runstrat(args=None):
         result = cerebro.run()
 
         # Print analyzers - results
-        # final_value = cerebro.broker.getvalue()
-        # print('Final Portfolio Value: %.2f' % final_value)
-        # print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
+        final_value = cerebro.broker.getvalue()
+        print('Final Portfolio Value: %.2f' % final_value)
+        print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
         print_trade_analysis(result[0].analyzers.ta.get_analysis())
         print_sqn(result[0].analyzers.sqn.get_analysis())
 
@@ -163,4 +152,6 @@ def runstrat(args=None):
             cerebro.plot()
 
 if __name__ == '__main__':
+    start_time = time.time()
     runstrat()
+    print("--- %s seconds ---" % (time.time() - start_time))

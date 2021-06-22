@@ -165,13 +165,13 @@ class StrategyBase(bt.Strategy):
             # print("Number of stop orders: ", len(self.stop_orders))
             self.stop_orders = {}
 
-    def sell_stop_loss(self, close):
+    def sell_stop_loss(self, close, multiplier=1):
         self.log(f"=== sell cerebro value {self.broker.getvalue()}")
         size = self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
         # size = self.cerebro.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close * (self.p.short_perc / 100)
         self.log(f"=== sell size, {size}")
         # Binance minimum order size
-        size = max(size, 0.0001)
+        size = max(size * multiplier, 0.0001)
 
         sell_order = self.sell(
             size=size, 
@@ -194,13 +194,13 @@ class StrategyBase(bt.Strategy):
         stop_order.addinfo(name="STOPLOSS for SHORT")
         self.stop_orders[stop_order.ref] = stop_order
         
-    def buy_stop_loss(self, close):
+    def buy_stop_loss(self, close, multiplier=1):
         self.log(f"=== buy cerebro value {self.broker.getvalue()}")
         size = self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
         # size = self.cerebro.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close
         self.log(f"=== buy size, {size}")
         # Binance minimum order size
-        size = max(size, 0.0001)
+        size = max(size * multiplier, 0.0001)
 
         buy_order = self.buy(
             size=size,
@@ -417,12 +417,12 @@ class StochMACD(StrategyBase):
         ('atrdist', 5),   # ATR distance for stop price
 
         ('reversal_sensitivity', 20),
+        ('reversal_lowerband', 50),
+        ('reversal_upperband', 50),
     )
 
     def __init__(self):
         StrategyBase.__init__(self)
-
-        print("===== INIT =====")
 
         logging.basicConfig(level=self.p.loglevel, force=True)
         self.dataclose = self.datas[0].close
@@ -438,6 +438,8 @@ class StochMACD(StrategyBase):
 
         # Cross of macd.macd and macd.signal
         self.mcross = bt.indicators.CrossOver(self.macd.macd, self.macd.signal)
+
+        self.rsi = bt.indicators.rsi(self.datas[0], safediv=True)
         
         self.atr = bt.indicators.ATR(self.datas[0], period=self.p.atrperiod)
 
@@ -451,15 +453,16 @@ class StochMACD(StrategyBase):
             lowerband=self.p.stoch_lowerband
         )
 
-        # self.st_stochrsi = StochasticRSI(
-        #     self.datas[1],
-        #     k_period=self.p.stoch_k_period,
-        #     d_period=self.p.stoch_d_period,
-        #     rsi_period=self.p.stoch_rsi_period,
-        #     stoch_period=self.p.stoch_period,
-        #     upperband=self.p.stoch_upperband,
-        #     lowerband=self.p.stoch_lowerband
-        # )
+        if len(self.datas) > 1:
+            self.fast_stochrsi = StochasticRSI(
+                self.datas[1],
+                k_period=self.p.stoch_k_period,
+                d_period=self.p.stoch_d_period,
+                rsi_period=self.p.stoch_rsi_period,
+                stoch_period=self.p.stoch_period,
+                upperband=self.p.stoch_upperband,
+                lowerband=self.p.stoch_lowerband
+            )
 
     def get_params_for_time(self):
         dd = self.datas[0].datetime.date(0)
@@ -555,31 +558,25 @@ class StochMACD(StrategyBase):
         if ENV == PRODUCTION and self.status != "LIVE":
             return
 
-        macd_should_sell = (self.mcross[0] < 0.0 or (self.macd[-1] > 0 and self.macd[0] <= 0))
+        sizer_multiplier = 1
 
         # macd_should_sell = (self.mcross[0] < 0.0 or 
         #     (self.macd[-1] > 0 and self.macd[0] <= 0) or
-        #     (self.macd[-2] > 0 and self.macd[0] <= 0))
-
-        macd_should_buy = (self.mcross[0] > 0.0 or (self.macd[-1] < 0 and self.macd[0] >= 0))
+        #     (self.macd[-2] > 0 and self.macd[-1] <= 0))
 
         # macd_should_buy = (self.mcross[0] > 0.0 or 
         #     (self.macd[-1] < 0 and self.macd[0] >= 0) or
-        #     (self.macd[-2] < 0 and self.macd[0] >= 0))
+        #     (self.macd[-2] < 0 and self.macd[-1] >= 0))
 
         should_buy = (
             self.mcross[0] > 0.0 and
             # macd_should_buy and
+            # self.rsi.l.
             self.stochrsi.l.fastk[-4] < self.p.stoch_lowerband and 
             self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband and 
             self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband and 
             self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband and 
             self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband
-#             self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband and 
-#             self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband and 
-#             self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband and 
-#             (self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband or self.stochrsi.l.fastk[-1] >= self.p.stoch_lowerband) and
-#             (self.mcross[0] > 0.0 or self.mcross[-1] > 0.0)
         )
         
         should_sell = (
@@ -590,22 +587,39 @@ class StochMACD(StrategyBase):
             self.stochrsi.l.fastk[-2] > self.p.stoch_upperband and 
             self.stochrsi.l.fastk[-1] > self.p.stoch_upperband and 
             self.stochrsi.l.fastk[0] <= self.p.stoch_upperband
-#             self.stochrsi.l.fastk[-3] > self.p.stoch_upperband and 
-#             self.stochrsi.l.fastk[-2] > self.p.stoch_upperband and 
-#             self.stochrsi.l.fastk[-1] > self.p.stoch_upperband and 
-#             (self.stochrsi.l.fastk[0] <= self.p.stoch_upperband or self.stochrsi.l.fastk[-1] <= self.p.stoch_upperband) and
-#             (self.mcross[0] < 0.0 or self.mcross[-1] < 0.0)
         )
+
+        if len(self.datas) > 1:
+            fast_should_buy = (
+                self.fast_stochrsi.l.fastk[-2] < self.p.stoch_lowerband and self.fast_stochrsi.l.fastk[-1] >= self.p.stoch_lowerband or
+                self.fast_stochrsi.l.fastk[-1] < self.p.stoch_lowerband and self.fast_stochrsi.l.fastk[0] >= self.p.stoch_lowerband
+            )
+            
+            fast_should_sell = (
+                self.fast_stochrsi.l.fastk[-2] > self.p.stoch_upperband and self.fast_stochrsi.l.fastk[-1] <= self.p.stoch_upperband or
+                self.fast_stochrsi.l.fastk[-1] > self.p.stoch_upperband and self.fast_stochrsi.l.fastk[0] <= self.p.stoch_upperband
+            )
+
+            if fast_should_buy and should_buy:
+                # print("FAST SHOULD BUY AS WELL")
+                sizer_multiplier *= 1.5
+
+            if fast_should_sell and should_sell:
+                # print("FAST SHOULD SELL AS WELL")
+                sizer_multiplier *= 1.5
         
         reversal_sensitivity = self.p.reversal_sensitivity
         should_stop_loss = True
         should_trade_on_reversal = True
         should_close_on_reversal = True
+
+        # reversal_band = 45
         
         # Need to sell
         if self.position.size > 0:
             if should_close_on_reversal:
-                if currentStochRSI > 50 and currentStochRSI < self.p.stoch_upperband:
+                # if currentStochRSI > 50 and currentStochRSI < self.p.stoch_upperband:
+                if currentStochRSI > self.p.reversal_upperband and currentStochRSI < self.p.stoch_upperband:
 
                     # stoch_cross_down = (
                     #     (self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and 
@@ -624,7 +638,7 @@ class StochMACD(StrategyBase):
 
                         if should_trade_on_reversal:
                             if should_stop_loss:
-                                self.sell_stop_loss(close)   
+                                self.sell_stop_loss(close, multiplier=sizer_multiplier)   
                             else:
                                 self.sell(name="ENTRY SHORT Order")
             
@@ -634,7 +648,7 @@ class StochMACD(StrategyBase):
                 self.log('REVERSAL SELL, %.2f' % self.dataclose[0])
                 
                 if should_stop_loss:
-                    self.sell_stop_loss(close)
+                    self.sell_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.sell(name="ENTRY SHORT Order")
                
@@ -642,7 +656,8 @@ class StochMACD(StrategyBase):
         # Need to buy
         if self.position.size < 0:
             if should_close_on_reversal:
-                if currentStochRSI > self.p.stoch_lowerband and currentStochRSI < 50:
+                # if currentStochRSI > self.p.stoch_lowerband and currentStochRSI < 50:
+                if currentStochRSI > self.p.stoch_lowerband and currentStochRSI < self.p.reversal_lowerband:
                     # stoch_cross_up = (
                     #     (self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and 
                     #     (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity) or
@@ -660,7 +675,7 @@ class StochMACD(StrategyBase):
 
                         if should_trade_on_reversal:
                             if should_stop_loss:
-                                self.buy_stop_loss(close)
+                                self.buy_stop_loss(close, multiplier=sizer_multiplier)
                             else:
                                 self.buy(name="ENTRY LONG Order")
                     
@@ -669,7 +684,7 @@ class StochMACD(StrategyBase):
                 self.log('REVERSAL BUY, %.2f' % self.dataclose[0])
                 
                 if should_stop_loss:                
-                    self.buy_stop_loss(close)
+                    self.buy_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.buy(name="ENTRY LONG Order")
 
@@ -677,21 +692,17 @@ class StochMACD(StrategyBase):
                 
         if self.position.size == 0:
             if should_buy:
-                # self.close_and_cancel_stops()
                 self.log('BUY CREATE, %.2f' % self.dataclose[0])
-                
                 if should_stop_loss:
-                    self.buy_stop_loss(close)
+                    self.buy_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.buy(name="ENTRY LONG Order")
             
 
             if should_sell:
-                # self.close_and_cancel_stops()
                 self.log('SELL CREATE, %.2f' % self.dataclose[0])
-                
                 if should_stop_loss:
-                    self.sell_stop_loss(close)
+                    self.sell_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.sell(name="ENTRY SHORT Order")
 

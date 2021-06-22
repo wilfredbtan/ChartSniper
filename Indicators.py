@@ -38,10 +38,12 @@ class StochasticRSI(Indicator):
         self.plotinfo.plotyhlines = [self.p.upperband, self.p.lowerband]
   
     def __init__(self):
-        rsi = bt.ind.RSI(period=self.p.rsi_period)
+        rsi = bt.ind.RSI(period=self.p.rsi_period, safediv=True)
         rsi_ll = bt.ind.Lowest(rsi, period=self.p.rsi_period)
         rsi_hh = bt.ind.Highest(rsi, period=self.p.rsi_period)
-        stochrsi = (rsi - rsi_ll) / (rsi_hh - rsi_ll)
+        stochrsi = bt.DivByZero((rsi - rsi_ll), (rsi_hh - rsi_ll), zero=0)
+        # stochrsi = (rsi - rsi_ll) / (rsi_hh - rsi_ll)
+        # print("StochRSI: ", stochrsi)
 
         self.l.fastk = k = self.p.movav(100.0 * stochrsi, period=self.p.k_period)
         self.l.fastd = self.p.movav(k, period=self.p.d_period)
