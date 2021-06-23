@@ -1,103 +1,25 @@
 import os
 
+short_bull_date='--fromdate 2017-8-18 --todate 2018-12-18'
 bear_date='--fromdate 2018-2-1 --todate 2019-2-1'
 crab_date='--fromdate 2019-5-12 --todate 2020-5-12'
 bull_date='--fromdate 2020-6-9 --todate 2021-6-9'
 # 1 minute range
-all_minute_date='--fromdate 2019-9-8 --todate 2021-6-9'
+all_minute_date='--fromdate 2019-9-9 --todate 2021-6-9'
 # hourly range
-all_hourly_date='--fromdate 2018-1-20 --todate 2021-6-9'
-
-'''Reversal Sensitivity (MACD 9 21 8)'''
-'''Thesis: A higher sensitivity works better in Bear and Bull markets. In Crab markets, lower sensitivity is better'''
-'''Bear'''
-# [0.00689532458065956, 23059.75, 17]
-# [0.00670548433260313, 21581.89, 18]
-# [0.00479636656754293, 10402.44, 19]
-# [0.00411938793302593, 7728.08, 16]
-# [-0.0003643100295929, -260.26, 15]
-'''Actual bear'''
-# [-0.0016600588198649232, -1425.24, 15]
-# [-0.0018266707526717265, -1601.31, 16]
-# [-0.0023339945466556745, -2200.05, 12]
-# [-0.0023747166871661155, -2255.5, 14]
-# [-0.0024488166673242947, -2361.15, 10]
-'''Crab'''
-# [0.008231021826217133, 36213.43, 4]
-# [0.007368975139523879, 27288.03, 7]
-# [0.007210632906502871, 25878.22, 5]
-# [0.007066154944201103, 24643.34, 3]
-# [0.00614901817524631, 17784.02, 6,]
-'''Actual Crab'''
-# [0.0017496608704953912, 1918.29, 19]
-# [0.0015872308551880465, 1669.65, 3]
-# [0.0006500736933698177, 529.12, 2]
-# [-4.778438668193305e-05, -32.78, 1]
-# [-0.00012415591598542773, -85.3, 5]
-'''Bull'''
-# [0.004879668529526089, 10558.76, 18]
-# [0.004026607805554393, 7268.01, 17]
-# [0.0037715048078425183, 6440.62, 19]
-# [0.0008436769131072008, 712.61, 16]
-# [-0.00019070770202055432, -129.01, 14]
-'''Actual Bull'''
-# [0.006891836680689853, 22504.62, 19]
-# [0.006882193923036234, 22429.86, 18]
-# [0.006072088781823609, 16808.63, 16]
-# [0.006030048899157235, 16550.16, 17]
-# [0.00353757174518233, 5743.27, 15]
-
-'''MACD (reversal 19)'''
-'''Bear'''
-# [0.001889897967533443, 2137.44, 9, 15, 7]
-# [0.0015410227879997366, 1599.28, 10, 16, 6]
-# [0.0014690954025456705, 1497.52, 11, 14, 6]
-# [0.0011527123511725981, 1081.86, 10, 14, 7]
-# [0.0010356152207866866, 942.38, 9, 16, 7]
-'''Crab'''
-# [0.01136928355607498, 92054.78, 7, 14, 8]
-# [0.01136928355607498, 92054.78, 8, 14, 7]
-# [0.011351657105664917, 91601.55, 7, 16, 7]
-# [0.01121950894212342, 88275.78, 7, 20, 5]
-# [0.010766946065870878, 77647.95, 10, 16, 5]
-'''Bull'''
-# [0.009903147490187005, 58231.01, 11, 24, 8]
-# [0.008785637998736709, 41640.28, 11, 25, 8]
-# [0.008577067920400056, -4730.94, 7, 17, 5]
-# [0.008014888912193095, 32684.91, 11, 17, 8]
-# [0.0071237647755424665, 24363.25, 11, 22, 8]
-'''All Time'''
-# [0.004314087757964757, 207620.89, 10, 16, 5]
-# [0.0037406937285448818, 124757.59, 11, 25, 8]
-# [0.003494007806609151, 99527.3, 10, 18, 8]
-# [0.003488842070251906, 99083.73, 7, 14, 8]
-# [0.003488842070251906, 99083.73, 8, 14, 7]
-
-
-# os.system('python3 backtest.py --macd1 9 --macd2 21 --macdsig 8 --fromdate 2019-5-1 --todate 2021-5-1')
-# os.system('python3 backtest.py --macd1 11 --macd2 24 --macdsig 7 --fromdate 2018-4-1 --todate 2019-4-1')
-
-''' Optimize for MACD. 9 21 8 seems the best for some reason lol'''
-    # From 2018
-# [0.004494863323081424, 9138.15, 5.0, 11, 25, 5]
-# [0.0044013609731506425, 8771.79, 5.0, 11, 24, 7]
-# [0.004198101472410856, 8006.65, 5.0, 11, 24, 5]
-# [0.00398634725384348, 7261.15, 5.0, 10, 25, 5]
-# [0.003786650116149551, 6602.89, 5.0, 10, 25, 7]
-
-    # From 2019
-# [0.002273390385830033, 9361.07, 5.0, 8, 25, 8]
-# [0.002271509188889601, 9345.8, 5.0, 9, 21, 8]
-# [0.002271509188889601, 9345.8, 5.0, 11, 20, 7]
-# [0.002255731406488645, 9218.39, 5.0, 9, 22, 8]
-# [0.0022306759365417917, 9018.59, 5.0, 10, 21, 7]
-
+all_hourly_date='--fromdate 2017-8-18 --todate 2021-6-9'
 
 # All time
 # Buggy leverage
 macd = '--macd1 9 --macd2 21 --macdsig 8' # Does even better when shorts are divided by 2 and is buggy lol
-# Actual
-# macd = '--macd1 10 --macd2 16 --macdsig 5'
+# macd = '--macd1 8 --macd2 21 --macdsig 5' # Some youtuber lol. Does well when crabbing. Otherwise meh
+# macd = '--macd1 8 --macd2 21 --macdsig 9' # test
+# Top bear (NOPE)
+# macd = '--macd1 8 --macd2 25 --macdsig 9'
+# Top crab (NOPE)
+# macd = '--macd1 7 --macd2 18 --macdsig 7'
+# Top bull and all
+# macd = '--macd1 8 --macd2 21 --macdsig 9'
 
 atrdist = '--atrdist 5'
 # atrdist = '--atrdist 3'
@@ -113,45 +35,146 @@ leverage = '--leverage 5'
 # after this, negative or pnl goes down
 
 # reversal_sensitivity = '--reversal_sensitivity 20'
-reversal_sensitivity = '--reversal_sensitivity 17'
+# reversal_sensitivity = '--reversal_sensitivity 17'
+reversal_sensitivity = '--reversal_sensitivity 16' #Higher SQN but lower PnL?
 # reversal_sensitivity = '--reversal_sensitivity 0'
 
 # date = bear_date
 # date = crab_date
 # date = bull_date
-# date = all_date
+# date = all_hourly_date
 date = all_minute_date
 # date = ''
 
 short_perc = '--short_perc 1'
 
+reversal_lowerband = '--reversal_lowerband 43'
+# reversal_lowerband = '--reversal_lowerband 50'
+
+reversal_upperband = '--reversal_upperband 48'
+# reversal_upperband = '--reversal_upperband 50'
+
 
 # Optimization
+# print("===== Short Bull (4 mths) =====")
+# os.system(f'python3 backtest.py -o {short_bull_date}')
 # print("===== Bear =====")
 # os.system(f'python3 backtest.py -o {bear_date}')
 # print("===== Crab =====")
 # os.system(f'python3 backtest.py -o {crab_date}')
 # print("===== Bull =====")
 # os.system(f'python3 backtest.py -o {bull_date}')
-print("===== All =====")
-os.system(f'python3 backtest.py -o')
+# print("===== All =====")
+# os.system(f'python3 backtest.py -o {all_hourly_date}')
 # print("===== Test =====")
 # os.system(f'python3 backtest.py -o {date}')
 
 # Individual tests
 # Dividing short amount by 2 makes the profit much higher. Maybe more reliable for longs
-# print("===== Bear =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bear_date} {reversal_sensitivity} {short_perc}')
-# print("===== Crab =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {crab_date} {reversal_sensitivity} {short_perc}')
-# print("===== Bull =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {bull_date} {reversal_sensitivity} {short_perc}')
-# print("===== All =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity}')
-# print("===== Test =====")
-# os.system(f'python3 backtest.py {macd} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {date}')
+print("===== Short Bull (4 mths) =====")
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity} {short_perc}')
+print("===== Bear =====")
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity} {short_perc}')
+print("===== Crab =====")
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity} {short_perc}')
+print("===== Bull =====")
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity} {short_perc}')
+print("===== All =====")
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_perc} {reversal_sensitivity}')
+# print("===== Custom =====")
+# os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {date}')
 
 '''
+### 16 Reversal Sensitivity
+===== Short Bull (4 mths) =====
+[0.36963485268010376, 3069.39, 5.0, 9, 21, 8, 16.0, 43.0, 48.0]
+===== Bear =====
+[1.1314725590711165, 38204.56, 5.0, 9, 21, 8, 16.0, 43.0, 48.0]
+===== Crab =====
+[0.6021465189141539, 11233.54, 5.0, 9, 21, 8, 16.0, 43.0, 48.0]
+===== Bull =====
+[1.637185487209027, 22511.21, 5.0, 9, 21, 8, 16.0, 43.0, 48.0]
+===== All =====
+[1.8192814018516947, 200399.51, 5.0, 9, 21, 8, 16.0, 43.0, 48.0]
+
+### 17 Reversal Sensitivity
+===== Short Bull (4 mths) =====
+[0.2631195710109405, 9579.55, 5.0, 9, 21, 8, 17.0, 43.0, 48.0]
+===== Bear =====
+[1.600384153666921, 89756.82, 5.0, 9, 21, 8, 17.0, 43.0, 48.0]
+===== Crab =====
+[0.6021465189141539, 11233.54, 5.0, 9, 21, 8, 17.0, 43.0, 48.0]
+===== Bull =====
+[1.3625423248835735, 16667.54, 5.0, 9, 21, 8, 17.0, 43.0, 48.0]
+===== All =====
+[1.6470884127706085, 462804.75, 5.0, 9, 21, 8, 17.0, 43.0, 48.0]
+
+### Optimize Reversal sensitivity
+===== Short Bull (4 mths) =====
+[0.36963485268010376, 3069.39, 16]
+[0.26383275670259937, 9590.54, 18]
+[0.2631195710109405, 9579.55, 17]
+[0.1772016686464381, 2689.28, 11]
+[0.020464152090036748, 146.08, 15]
+--- 21.543615102767944 seconds ---
+===== Bear =====
+[1.6012396305690584, 89828.22, 18]
+[1.600384153666921, 89756.82, 17]
+[1.2750854569457892, 11225.02, 13]
+[1.2162907461766719, 24687.81, 15]
+[1.182913442315194, 9635.55, 12]
+--- 16.653862237930298 seconds ---
+===== Crab =====
+[0.9285724587605005, 20593.3, 14]
+[0.9119122276099856, 20007.64, 13]
+[0.887738524820314, 34582.04, 19]
+[0.87026585852503, 17377.89, 5]
+[0.8581549218065982, 17830.73, 15]
+--- 17.32618808746338 seconds ---
+===== Bull =====
+[1.637185487209027, 22511.21, 16]
+[1.3625423248835735, 16667.54, 17]
+[1.2623904603644616, 19624.48, 18]
+[1.0680308938759724, 10864.59, 19]
+[0.4437130172902241, 2286.22, 11]
+--- 17.85008978843689 seconds ---
+===== All =====
+[1.8192814018516947, 200399.51, 16]
+[1.6470884127706085, 462804.75, 17]
+[1.456917841922472, 382865.74, 18]
+[1.3496677609219174, 183632.19, 19]
+[0.8289398544053597, 31817.5, 11]
+
+### Optimize MACD value for loosened crossover
+===== Bear =====
+[1.7280813452587378, 100386.69, 8, 25, 8]
+[1.7088522463379094, 89675.55, 7, 23, 9]
+[1.7088522463379094, 89675.55, 7, 24, 9]
+[1.7088522463379094, 89675.55, 8, 23, 8]
+[1.7088522463379094, 89675.55, 8, 24, 8]
+--- 42.535221099853516 seconds ---
+===== Crab =====
+[0.6295844306270235, 19426.11, 7, 18, 7]
+[0.6021465189141539, 11233.54, 7, 25, 9]
+[0.6021465189141539, 11233.54, 8, 21, 9]
+[0.6021465189141539, 11233.54, 8, 22, 9]
+[0.6021465189141539, 11233.54, 8, 24, 8]
+--- 44.68603301048279 seconds ---
+===== Bull =====
+[1.2887123073118756, 14825.69, 8, 21, 9]
+[1.2887123073118756, 14825.69, 8, 22, 9]
+[1.2887123073118756, 14825.69, 9, 18, 9]
+[1.2887123073118756, 14825.69, 9, 19, 9]
+[1.2887123073118756, 14825.69, 9, 21, 8]
+--- 42.40656590461731 seconds ---
+===== All =====
+[1.6116111106534121, 423039.04, 8, 21, 9]
+[1.6116111106534121, 423039.04, 9, 21, 8]
+[1.6077561939245673, 339911.79, 8, 22, 9]
+[1.6077561939245673, 339911.79, 9, 22, 8]
+[1.6077561939245673, 339911.79, 11, 20, 7]
+
+
 ### Short percentage
 ======= Non-Buggy Code (invests 50% of cash AFTER closing) =======
 MACD 10, 16, 5

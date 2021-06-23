@@ -5,13 +5,15 @@ from datetime import datetime
 from Commissions import CommInfo_Futures_Perc_Mult
 from Parser import parse_args
 from Datasets import *
-from Strategies import StochMACD, WfaStochMACD
+from strategies import StochMACD, WfaStochMACD
 from utils import print_sqn, print_trade_analysis
 
 def runstrat(args=None):
     args = parse_args(args)
 
-    cerebro = bt.Cerebro(optreturn=(not args.optimize), quicknotify=True)
+    # Need to disable the stdstats for optimization
+    cerebro = bt.Cerebro(optreturn=(not args.optimize), quicknotify=True, stdstats=False)
+
     cerebro.broker.set_shortcash(False)
     cerebro.broker.set_cash(args.cash)
     cerebro.broker.setcommission(commission=0.00015, leverage=args.leverage)
@@ -36,32 +38,36 @@ def runstrat(args=None):
         headers=True,
     )
 
-    dataname2 = DATASETS.get(args.dataset2)
-    data2 = bt.feeds.GenericCSVData(
-        dataname=dataname2,
-        fromdate=fromdate,
-        todate=todate,
-        timeframe=bt.TimeFrame.Minutes,
-        nullvalue=0.0,
-        datetime=0,
-        open=4,
-        high=5,
-        low=6,
-        close=7,
-        volume=8,
-        # compression=15,
-        headers=True,
-    )
+    # dataname2 = DATASETS.get(args.dataset2)
+    # data2 = bt.feeds.GenericCSVData(
+    #     dataname=dataname2,
+    #     fromdate=fromdate,
+    #     todate=todate,
+    #     timeframe=bt.TimeFrame.Minutes,
+    #     nullvalue=0.0,
+    #     datetime=0,
+    #     open=4,
+    #     high=5,
+    #     low=6,
+    #     close=7,
+    #     volume=8,
+    #     compression=1,
+    #     headers=True,
+    # )
 
+
+    # https://www.backtrader.com/docu/data-multitimeframe/data-multitimeframe/
+    #  data with the smallest timeframe (and thus the larger number of bars) must be the 1st one to be added to the Cerebro instance
+    # cerebro.resampledata(data2, timeframe=bt.TimeFrame.Minutes, compression=15)
+    # cerebro.resampledata(data2, timeframe=bt.TimeFrame.Minutes, compression=60)
     cerebro.adddata(data)
-
-    # cerebro.resampledata(dataname=data2, timeframe=bt.TimeFrame.Minutes, compression=15)
+    cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
 
     if args.optimize:
         cerebro.optstrategy(StochMACD, 
-            # macd1=range(7, 12),
-            # macd2=range(14, 26),
-            # macdsig=range(5, 9),
+            # macd1=range(7, 15),
+            # macd2=range(18, 26),
+            # macdsig=range(7, 10),
             macd1=9,
             macd2=21,
             macdsig=8,
@@ -70,15 +76,21 @@ def runstrat(args=None):
             # macdsig=5,
             # atrdist=range(1,10),
             atrdist=5,
-            # reversal_sensitivity=range(1, 20),
-            reversal_sensitivity=17,
-            reversal_lowerband=range(40,50),
-            reversal_upperband=range(50,60),
+            reversal_sensitivity=range(5, 20),
+            # reversal_sensitivity=17,
+
+            # reversal_lowerband=range(40,53),
+            reversal_lowerband=43,
+            # reversal_upperband=range(45,55),
+            reversal_upperband=48,
+
             # leverage=args.leverage,
             # leverage=(1,125),
+            leverage=5,
+
             # short_perc=range(1,100),
             # short_perc=1,
-            leverage=5,
+
             isWfa=False,
         )
         
@@ -96,11 +108,13 @@ def runstrat(args=None):
                     [
                         sqn['sqn'],
                         PnL, 
-                        # strategy.p.atrdist,
-                        # strategy.p.macd1, 
-                        # strategy.p.macd2, 
-                        # strategy.p.macdsig, 
+                        strategy.p.atrdist,
+                        strategy.p.macd1, 
+                        strategy.p.macd2, 
+                        strategy.p.macdsig, 
                         strategy.p.reversal_sensitivity, 
+                        strategy.p.reversal_lowerband,
+                        strategy.p.reversal_upperband,
                         # strategy.p.short_perc,
                         # strategy.p.leverage, 
                     ]
@@ -126,6 +140,8 @@ def runstrat(args=None):
             atrperiod=args.atrperiod,
             atrdist=args.atrdist,
             reversal_sensitivity=args.reversal_sensitivity,
+            reversal_lowerband=args.reversal_lowerband,
+            reversal_upperband=args.reversal_upperband,
             short_perc=args.short_perc,
             loglevel=args.loglevel,
             leverage=args.leverage,
@@ -138,15 +154,33 @@ def runstrat(args=None):
         cerebro.addobserver(bt.observers.Value)
 
         initial_value = cerebro.broker.getvalue()
-        print('Starting Portfolio Value: %.2f' % initial_value)
+        # print('Starting Portfolio Value: %.2f' % initial_value)
         result = cerebro.run()
 
         # Print analyzers - results
         final_value = cerebro.broker.getvalue()
-        print('Final Portfolio Value: %.2f' % final_value)
-        print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
-        print_trade_analysis(result[0].analyzers.ta.get_analysis())
-        print_sqn(result[0].analyzers.sqn.get_analysis())
+        # print('Final Portfolio Value: %.2f' % final_value)
+        # print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
+        # print_trade_analysis(result[0].analyzers.ta.get_analysis())
+        # print_sqn(result[0].analyzers.sqn.get_analysis())
+
+        sqn = result[0].analyzers.sqn.get_analysis()
+        PnL = round(result[0].broker.get_value() - args.cash, 2)
+        print(
+            [
+                sqn['sqn'],
+                PnL, 
+                result[0].p.atrdist,
+                result[0].p.macd1, 
+                result[0].p.macd2, 
+                result[0].p.macdsig, 
+                result[0].p.reversal_sensitivity, 
+                result[0].p.reversal_lowerband,
+                result[0].p.reversal_upperband,
+                # result[0].p.short_perc,
+                # result[0].p.leverage, 
+            ]
+        )
 
         if args.plot:
             cerebro.plot()

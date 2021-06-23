@@ -1,6 +1,7 @@
 import time
 from datetime import timezone
 from pprint import pprint
+from backtrader.dataseries import TimeFrame
 from termcolor import colored
 import logging
 import backtrader as bt
@@ -13,7 +14,6 @@ class StrategyBase(bt.Strategy):
     params = (
         ("cashperc", 50),
         ("leverage", 5),
-        ("cerebro", None),
         ('loglevel', logging.WARNING),
         ('short_perc', 50),
         ('isWfa', False)
@@ -229,14 +229,14 @@ class StrategyBase(bt.Strategy):
         if color:
             log_txt = colored(txt, color)
 
-        # dt = dt or self.datas[0].datetime.date(0)
-        # hh = self.datas[0].datetime.time()
-        if len(self.datas) > 1:
-            dt = dt or self.datas[1].datetime.date(0)
-            hh = self.datas[1].datetime.time()
-        else:
-            dt = dt or self.datas[0].datetime.date(0)
-            hh = self.datas[0].datetime.time()
+        dt = dt or self.datas[0].datetime.date(0)
+        hh = self.datas[0].datetime.time()
+        # if len(self.datas) > 1:
+        #     dt = dt or self.datas[1].datetime.date(0)
+        #     hh = self.datas[1].datetime.time()
+        # else:
+        #     dt = dt or self.datas[0].datetime.date(0)
+        #     hh = self.datas[0].datetime.time()
 
         logging.log(level, '%s %s, %s' % (dt.isoformat(), hh, log_txt))
 
@@ -265,6 +265,9 @@ class StrategyBase(bt.Strategy):
 
         if pnlcomm:
             txt += ', NET %.2f' % pnlcomm
+        
+        value = self.broker.getvalue()
+        txt += f'\nPORTFOLIO VALUE: {value}'
 
         self.log(txt, level=logging.INFO, send_telegram=True, color=color)
 
@@ -439,7 +442,7 @@ class StochMACD(StrategyBase):
         # Cross of macd.macd and macd.signal
         self.mcross = bt.indicators.CrossOver(self.macd.macd, self.macd.signal)
 
-        self.rsi = bt.indicators.rsi(self.datas[0], safediv=True)
+        self.rsi = bt.ind.RSI(self.datas[0], period=self.p.stoch_rsi_period, safediv=True)
         
         self.atr = bt.indicators.ATR(self.datas[0], period=self.p.atrperiod)
 
@@ -450,19 +453,19 @@ class StochMACD(StrategyBase):
             rsi_period=self.p.stoch_rsi_period,
             stoch_period=self.p.stoch_period,
             upperband=self.p.stoch_upperband,
-            lowerband=self.p.stoch_lowerband
+            lowerband=self.p.stoch_lowerband,
         )
 
-        if len(self.datas) > 1:
-            self.fast_stochrsi = StochasticRSI(
-                self.datas[1],
-                k_period=self.p.stoch_k_period,
-                d_period=self.p.stoch_d_period,
-                rsi_period=self.p.stoch_rsi_period,
-                stoch_period=self.p.stoch_period,
-                upperband=self.p.stoch_upperband,
-                lowerband=self.p.stoch_lowerband
-            )
+        # if len(self.datas) > 1:
+        #     self.alt_stochrsi = StochasticRSI(
+        #         self.datas[1],
+        #         k_period=self.p.stoch_k_period,
+        #         d_period=self.p.stoch_d_period,
+        #         rsi_period=self.p.stoch_rsi_period,
+        #         stoch_period=self.p.stoch_period,
+        #         upperband=self.p.stoch_upperband,
+        #         lowerband=self.p.stoch_lowerband
+        #     )
 
     def get_params_for_time(self):
         dd = self.datas[0].datetime.date(0)
@@ -497,22 +500,22 @@ class StochMACD(StrategyBase):
         currentStochRSI = self.stochrsi.l.fastk[0]
 
         # print("===== Values: =====")
-        # dt = self.datas[1].datetime.datetime()
-        # print(dir(self.datas[1].datetime))
-        # print(self.datas[1].datetime.datetime())
-        # print(self.datas[1].datetime.dt())
-        # print(self.datas[1].datetime.tm_raw())
-        # print(self.datas[1].datetime.tm())
-        # print(self.datas[1].datetime.tm2datetime())
-        # print(self.datas[1].datetime.tm2dtime())
+        # dt0 = self.datas[0].datetime.datetime()
+        # print("d0", dt0)
+        # dt1 = self.datas[1].datetime.datetime()
+        # print("d1", dt1)
+
+        # print("d0 OHLC: ", self.datas[0].datetime.datetime(), self.datas[0].open[0], self.datas[0].high[0], self.datas[0].low[0], self.datas[0].close[0])
+        # print("d1 OHLC: ", self.datas[1].datetime.datetime(), self.datas[1].open[0], self.datas[1].high[0], self.datas[1].low[0], self.datas[1].close[0])
+        # print("")
+
         if len(self.datas) > 1:
             time_str = self.datas[1].datetime.time().strftime('%H:%M:%S')
             # print(time_str)
-            hours = int(time_str.split(':')[1])
-            # print("hours: ", hours)
+            minutes = int(time_str.split(':')[1])
+            # print("minutes: ", minutes)
             # print(f"datetime: {dt}")
-            # if self.datas[1].datetime.time() % 60 == 0:
-            if hours != 0:
+            if minutes != 0:
                 return
 
         # print("is hourly")
@@ -539,16 +542,18 @@ class StochMACD(StrategyBase):
         - If in downtrend, don’t reverse a short to a bit. Just close
         '''
 
-        # print("Should buy:")
-        # print("self.mcross[0] > 0.0", self.mcross[0] > 0.0)
+        # print("Should buy: (cross up)")
+        # # print("self.mcross[0] > 0.0", self.mcross[0] > 0.0)
+        # print("self.stochrsi.l.fastk[-4] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-4] < self.p.stoch_lowerband)
         # print("self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband)
         # print("self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband)
         # print("self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband)
         # print("self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband)
         # print("")
 
-        # print("Should sell:")
-        # print("self.mcross[0] < 0.0", self.mcross[0] < 0.0)
+        # print("Should sell: (cross down)")
+        # # print("self.mcross[0] < 0.0", self.mcross[0] < 0.0)
+        # print("self.stochrsi.l.fastk[-4] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-4] > self.p.stoch_lowerband)
         # print("self.stochrsi.l.fastk[-3] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-3] > self.p.stoch_lowerband)
         # print("self.stochrsi.l.fastk[-2] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-2] > self.p.stoch_lowerband)
         # print("self.stochrsi.l.fastk[-1] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-1] > self.p.stoch_lowerband)
@@ -568,74 +573,79 @@ class StochMACD(StrategyBase):
         #     (self.macd[-1] < 0 and self.macd[0] >= 0) or
         #     (self.macd[-2] < 0 and self.macd[-1] >= 0))
 
+        lowerband_count = -4
+        did_stochrsi_crossup = True
+        while lowerband_count <= 0:
+            if lowerband_count == 0:
+                did_stochrsi_crossup = did_stochrsi_crossup and self.stochrsi.l.fastk[lowerband_count] >= self.p.stoch_lowerband
+            else:
+                did_stochrsi_crossup = did_stochrsi_crossup and self.stochrsi.l.fastk[lowerband_count] < self.p.stoch_lowerband
+            lowerband_count += 1
+
+        upperband_count = -4
+        did_stochrsi_crossdown = True
+        while upperband_count <= 0:
+            if upperband_count == 0:
+                did_stochrsi_crossdown = did_stochrsi_crossdown and self.stochrsi.l.fastk[upperband_count] <= self.p.stoch_upperband
+            else:
+                did_stochrsi_crossdown = did_stochrsi_crossdown and self.stochrsi.l.fastk[upperband_count] > self.p.stoch_upperband
+            upperband_count += 1
+
+        rsi_should_buy = self.rsi[0] < 50 or self.rsi[-1] < 50
+        rsi_should_sell = self.rsi[0] > 50 or self.rsi[-1] > 50
+
         should_buy = (
-            self.mcross[0] > 0.0 and
-            # macd_should_buy and
-            # self.rsi.l.
-            self.stochrsi.l.fastk[-4] < self.p.stoch_lowerband and 
-            self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband and 
-            self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband and 
-            self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband and 
-            self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband
+            (self.mcross[0] > 0 or self.mcross[-1] > 0) and
+            rsi_should_buy and
+            did_stochrsi_crossup
         )
         
         should_sell = (
-            self.mcross[0] < 0.0 and
-            # macd_should_sell and
-            self.stochrsi.l.fastk[-4] > self.p.stoch_upperband and 
-            self.stochrsi.l.fastk[-3] > self.p.stoch_upperband and 
-            self.stochrsi.l.fastk[-2] > self.p.stoch_upperband and 
-            self.stochrsi.l.fastk[-1] > self.p.stoch_upperband and 
-            self.stochrsi.l.fastk[0] <= self.p.stoch_upperband
+            (self.mcross[0] < 0 or self.mcross[-1] < 0) and
+            rsi_should_sell and
+            did_stochrsi_crossdown
         )
 
-        if len(self.datas) > 1:
-            fast_should_buy = (
-                self.fast_stochrsi.l.fastk[-2] < self.p.stoch_lowerband and self.fast_stochrsi.l.fastk[-1] >= self.p.stoch_lowerband or
-                self.fast_stochrsi.l.fastk[-1] < self.p.stoch_lowerband and self.fast_stochrsi.l.fastk[0] >= self.p.stoch_lowerband
-            )
-            
-            fast_should_sell = (
-                self.fast_stochrsi.l.fastk[-2] > self.p.stoch_upperband and self.fast_stochrsi.l.fastk[-1] <= self.p.stoch_upperband or
-                self.fast_stochrsi.l.fastk[-1] > self.p.stoch_upperband and self.fast_stochrsi.l.fastk[0] <= self.p.stoch_upperband
-            )
+        # if len(self.datas) > 1:
+        #     alt_should_sell = (
+        #         self.alt_stochrsi.l.fastk[-1] > self.alt_stochrsi.l.fastd[-1] and
+        #         (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) <= 0
+        #     )
 
-            if fast_should_buy and should_buy:
-                # print("FAST SHOULD BUY AS WELL")
-                sizer_multiplier *= 1.5
+        #     alt_should_buy = (
+        #         self.alt_stochrsi.l.fastk[-1] < self.alt_stochrsi.l.fastd[-1] and
+        #         (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) >= 0
+        #     )
 
-            if fast_should_sell and should_sell:
-                # print("FAST SHOULD SELL AS WELL")
-                sizer_multiplier *= 1.5
-        
+            # if alt_should_sell and should_sell:
+            #     # print("FAST SHOULD SELL AS WELL")
+            #     sizer_multiplier *= 1.5
+
+            # if alt_should_buy and should_buy:
+            #     # print("FAST SHOULD BUY AS WELL")
+            #     sizer_multiplier *= 1.5
+
         reversal_sensitivity = self.p.reversal_sensitivity
         should_stop_loss = True
         should_trade_on_reversal = True
         should_close_on_reversal = True
 
-        # reversal_band = 45
-        
         # Need to sell
         if self.position.size > 0:
             if should_close_on_reversal:
-                # if currentStochRSI > 50 and currentStochRSI < self.p.stoch_upperband:
                 if currentStochRSI > self.p.reversal_upperband and currentStochRSI < self.p.stoch_upperband:
-
-                    # stoch_cross_down = (
-                    #     (self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and 
-                    #     (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity) or
-                    #     (self.stochrsi.l.fastk[-2] > self.stochrsi.l.fastd[-2] and 
-                    #     (self.stochrsi.l.fastk[-1] - self.stochrsi.l.fastd[-1]) <= -reversal_sensitivity)
-                    # )
-
                     # If fast crosses slow downwards, trend reversal, sell
-                    # if (stoch_cross_down and macd_should_sell):
-                    if (self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and
-                        (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity):
+                    if (
+                        self.stochrsi.l.fastk[-2] > self.stochrsi.l.fastd[-2] and
+                        self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and
+                        (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity
+                        # and (rsi_should_buy)
+                        ):
 
-                        self.close_and_cancel_stops()
+                        # print("REVERSAL SELL")
+
                         self.log('INTERIM REVERSAL SELL, %.2f' % self.dataclose[0])
-
+                        self.close_and_cancel_stops()
                         if should_trade_on_reversal:
                             if should_stop_loss:
                                 self.sell_stop_loss(close, multiplier=sizer_multiplier)   
@@ -643,10 +653,8 @@ class StochMACD(StrategyBase):
                                 self.sell(name="ENTRY SHORT Order")
             
             if should_sell:
-                self.close_and_cancel_stops()
-
                 self.log('REVERSAL SELL, %.2f' % self.dataclose[0])
-                
+                self.close_and_cancel_stops()
                 if should_stop_loss:
                     self.sell_stop_loss(close, multiplier=sizer_multiplier)
                 else:
@@ -656,23 +664,17 @@ class StochMACD(StrategyBase):
         # Need to buy
         if self.position.size < 0:
             if should_close_on_reversal:
-                # if currentStochRSI > self.p.stoch_lowerband and currentStochRSI < 50:
                 if currentStochRSI > self.p.stoch_lowerband and currentStochRSI < self.p.reversal_lowerband:
-                    # stoch_cross_up = (
-                    #     (self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and 
-                    #     (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity) or
-                    #     (self.stochrsi.l.fastk[-2] < self.stochrsi.l.fastd[-2] and 
-                    #     (self.stochrsi.l.fastk[-1] - self.stochrsi.l.fastd[-1]) >= reversal_sensitivity)
-                    # )
-
                     # If fast crosses slow upwards, trend reversal, buy
-                    # if (stoch_cross_up and macd_should_buy):
-                    if (self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and 
-                        (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity):
-
-                        self.close_and_cancel_stops()
+                    if (
+                        self.stochrsi.l.fastk[-2] < self.stochrsi.l.fastd[-2] and
+                        self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and 
+                        (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity
+                        # and (rsi_should_sell)
+                    ):
+                        # print("REVERSAL BUY")
                         self.log('INTERIM REVERSAL BUY, %.2f' % self.dataclose[0])
-
+                        self.close_and_cancel_stops()
                         if should_trade_on_reversal:
                             if should_stop_loss:
                                 self.buy_stop_loss(close, multiplier=sizer_multiplier)
@@ -680,15 +682,12 @@ class StochMACD(StrategyBase):
                                 self.buy(name="ENTRY LONG Order")
                     
             if should_buy:
-                self.close_and_cancel_stops()
                 self.log('REVERSAL BUY, %.2f' % self.dataclose[0])
-                
+                self.close_and_cancel_stops()
                 if should_stop_loss:                
                     self.buy_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.buy(name="ENTRY LONG Order")
-
-           
                 
         if self.position.size == 0:
             if should_buy:
@@ -790,10 +789,10 @@ class WfaStochMACD(StrategyBase):
         return self.sorted_params[self.interval_index][1]
 
     def next(self):        
-        close = self.dataclose[0]
-        currentStochRSI = self.stochrsi.l.fastk[0]
 
         self.params_to_use = self.get_params_for_time()
+        close = self.dataclose[0]
+        currentStochRSI = self.stochrsi.l.fastk[0]
 
         # if self.status == "LIVE":
         # print("===== Values: =====")

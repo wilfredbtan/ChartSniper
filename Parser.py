@@ -16,7 +16,7 @@ def parse_args(pargs=None):
                         help='Choose one of the predefined data sets')
 
     parser.add_argument('--fromdate', required=False,
-                        default='2018-02-01',
+                        default='2017-08-18',
                         help='Starting date in YYYY-MM-DD format')
 
     parser.add_argument('--todate', required=False,
@@ -107,6 +107,14 @@ def parse_args(pargs=None):
                         type=float, default=20.0,
                         help=('Sensitivity for a reversal in Stoch RSI to be recognized', 
                         'Calculated as fastk - fastk'))
+
+    parser.add_argument('--reversal_lowerband', required=False, action='store',
+                        type=float, default=50.0,
+                        help=('Threshold to consider a reversal sell', '> reversal_upperband and < stoch_upperband = sell'))
+
+    parser.add_argument('--reversal_upperband', required=False, action='store',
+                        type=float, default=50.0,
+                        help=('Threshold to consider a reversal buy', '< reversal_lowerband and > stoch_lowerband = buy'))
 
     parser.add_argument('--short_perc', required=False, action='store',
                         type=float, default=50,
