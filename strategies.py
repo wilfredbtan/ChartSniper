@@ -456,16 +456,16 @@ class StochMACD(StrategyBase):
             lowerband=self.p.stoch_lowerband,
         )
 
-        # if len(self.datas) > 1:
-        #     self.alt_stochrsi = StochasticRSI(
-        #         self.datas[1],
-        #         k_period=self.p.stoch_k_period,
-        #         d_period=self.p.stoch_d_period,
-        #         rsi_period=self.p.stoch_rsi_period,
-        #         stoch_period=self.p.stoch_period,
-        #         upperband=self.p.stoch_upperband,
-        #         lowerband=self.p.stoch_lowerband
-        #     )
+        if len(self.datas) > 1:
+            self.alt_stochrsi = StochasticRSI(
+                self.datas[1],
+                k_period=self.p.stoch_k_period,
+                d_period=self.p.stoch_d_period,
+                rsi_period=self.p.stoch_rsi_period,
+                stoch_period=self.p.stoch_period,
+                upperband=self.p.stoch_upperband,
+                lowerband=self.p.stoch_lowerband
+            )
 
     def get_params_for_time(self):
         dd = self.datas[0].datetime.date(0)
@@ -606,24 +606,24 @@ class StochMACD(StrategyBase):
             did_stochrsi_crossdown
         )
 
-        # if len(self.datas) > 1:
-        #     alt_should_sell = (
-        #         self.alt_stochrsi.l.fastk[-1] > self.alt_stochrsi.l.fastd[-1] and
-        #         (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) <= 0
-        #     )
+        if len(self.datas) > 1:
+            alt_should_sell = (
+                self.alt_stochrsi.l.fastk[-1] > self.alt_stochrsi.l.fastd[-1] and
+                (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) <= 0
+            )
 
-        #     alt_should_buy = (
-        #         self.alt_stochrsi.l.fastk[-1] < self.alt_stochrsi.l.fastd[-1] and
-        #         (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) >= 0
-        #     )
+            alt_should_buy = (
+                self.alt_stochrsi.l.fastk[-1] < self.alt_stochrsi.l.fastd[-1] and
+                (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) >= 0
+            )
 
-            # if alt_should_sell and should_sell:
-            #     # print("FAST SHOULD SELL AS WELL")
-            #     sizer_multiplier *= 1.5
+            if alt_should_sell and should_sell:
+                # print("FAST SHOULD SELL AS WELL")
+                sizer_multiplier *= 1.5
 
-            # if alt_should_buy and should_buy:
-            #     # print("FAST SHOULD BUY AS WELL")
-            #     sizer_multiplier *= 1.5
+            if alt_should_buy and should_buy:
+                # print("FAST SHOULD BUY AS WELL")
+                sizer_multiplier *= 1.5
 
         reversal_sensitivity = self.p.reversal_sensitivity
         should_stop_loss = True

@@ -154,15 +154,15 @@ def runstrat(args=None):
         cerebro.addobserver(bt.observers.Value)
 
         initial_value = cerebro.broker.getvalue()
-        # print('Starting Portfolio Value: %.2f' % initial_value)
+        print('Starting Portfolio Value: %.2f' % initial_value)
         result = cerebro.run()
 
         # Print analyzers - results
         final_value = cerebro.broker.getvalue()
-        # print('Final Portfolio Value: %.2f' % final_value)
-        # print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
-        # print_trade_analysis(result[0].analyzers.ta.get_analysis())
-        # print_sqn(result[0].analyzers.sqn.get_analysis())
+        print('Final Portfolio Value: %.2f' % final_value)
+        print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
+        print_trade_analysis(result[0].analyzers.ta.get_analysis())
+        print_sqn(result[0].analyzers.sqn.get_analysis())
 
         sqn = result[0].analyzers.sqn.get_analysis()
         PnL = round(result[0].broker.get_value() - args.cash, 2)

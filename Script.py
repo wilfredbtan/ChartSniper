@@ -35,8 +35,8 @@ leverage = '--leverage 5'
 # after this, negative or pnl goes down
 
 # reversal_sensitivity = '--reversal_sensitivity 20'
-# reversal_sensitivity = '--reversal_sensitivity 17'
-reversal_sensitivity = '--reversal_sensitivity 16' #Higher SQN but lower PnL?
+reversal_sensitivity = '--reversal_sensitivity 17'
+# reversal_sensitivity = '--reversal_sensitivity 16' #Higher SQN but lower PnL?
 # reversal_sensitivity = '--reversal_sensitivity 0'
 
 # date = bear_date
