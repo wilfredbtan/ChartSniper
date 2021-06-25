@@ -1,6 +1,6 @@
 import backtrader as bt
 from Datasets import *
-from Strategies import WfaStochMACD
+from strategies import WfaStochMACD
 
 def test_strategies(dataset, cash, period, parameter_sets):
     results = []

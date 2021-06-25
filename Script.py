@@ -26,6 +26,7 @@ atrdist = '--atrdist 5'
 # atrdist = '--atrdist 13'
 
 # leverage = '--leverage 1'
+# leverage = '--leverage 3'
 # leverage = '--leverage 4'
 leverage = '--leverage 5'
 # leverage = '--leverage 6'
@@ -42,8 +43,8 @@ reversal_sensitivity = '--reversal_sensitivity 17'
 # date = bear_date
 # date = crab_date
 # date = bull_date
-# date = all_hourly_date
-date = all_minute_date
+date = all_hourly_date
+# date = all_minute_date
 # date = ''
 
 short_perc = '--short_perc 1'
@@ -82,7 +83,7 @@ os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband}
 print("===== All =====")
 os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_perc} {reversal_sensitivity}')
 # print("===== Custom =====")
-# os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {date}')
+# os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {date} -v')
 
 '''
 ### 16 Reversal Sensitivity

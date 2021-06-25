@@ -1,6 +1,9 @@
+import collections
+import bisect
 import time
 from datetime import timezone
 from pprint import pprint
+from backtrader import position
 from backtrader.dataseries import TimeFrame
 from termcolor import colored
 import logging
@@ -25,8 +28,20 @@ class StrategyBase(bt.Strategy):
         self.last_buy_price = None
         self.last_sell_price = None
         self.logged_order_ids = set()
-        # self.stop_order = None
         self.stop_orders = {}
+
+        # Retrieved on 25 Jun 2021 from https://www.binance.com/en/support/faq/360033162192 and https://www.binance.com/en/support/faq/360033162192
+        self.tier_dict = collections.OrderedDict()
+        self.tier_dict[50000] = (0.004, 0)
+        self.tier_dict[250000] = (0.005, 50)
+        self.tier_dict[1000000] = (0.01, 1300)
+        self.tier_dict[5000000] = (0.025, 16300)
+        self.tier_dict[20000000] = (0.05, 141300)
+        self.tier_dict[50000000] = (0.1, 1141300)
+        self.tier_dict[100000000] = (0.125, 2391300)
+        self.tier_dict[200000000] = (0.15, 4891300)
+        self.tier_dict[300000000] = (0.25, 24891300)
+        self.tier_dict[500000000] = (0.5, 0)
 
     def notify_data(self, data, status, *args, **kwargs):
         self.status = data._getstatusname(status)
@@ -58,6 +73,10 @@ class StrategyBase(bt.Strategy):
 
         if order.status in [order.Completed]:
             if 'STOPLOSS' in order_name and order.ref in self.stop_orders:
+                # pprint(order.info)
+                if order.info.is_liquidable:
+                    txt = colored("============== LIQUIDABLE stoploss executed!!!! ==============", 'yellow')
+                    print(txt)
                 del self.stop_orders[order.ref]
 
             if ENV == PRODUCTION:
@@ -92,7 +111,7 @@ class StrategyBase(bt.Strategy):
                             pnl = self.last_sell_price - order_cost  
                             self.log_profit(pnl)
                             # print("buy close broker cash")
-                            # print("cerebro cash", self.cerebro.broker.cash)
+                            # print("cerebro cash", self.broker.cash)
                         else:
                             self.last_buy_price = order_cost
                     else:
@@ -110,7 +129,7 @@ class StrategyBase(bt.Strategy):
                             pnl = self.last_buy_price - order_cost  
                             self.log_profit(pnl)
                             # print("sell close broker cash")
-                            # print("cerebro cash", self.cerebro.broker.cash)
+                            # print("cerebro cash", self.broker.cash)
                         else:
                             self.last_sell_price = order_cost 
             else:
@@ -152,7 +171,7 @@ class StrategyBase(bt.Strategy):
 
     def close_and_cancel_stops(self):
         # self.log("close broker cash")
-        # self.log(f"close cerebro cash {self.cerebro.broker.cash}")
+        # self.log(f"close cerebro cash {self.broker.cash}")
         close_order = self.close()
         if close_order:
             close_order.addinfo(name="CLOSE")
@@ -165,12 +184,69 @@ class StrategyBase(bt.Strategy):
             # print("Number of stop orders: ", len(self.stop_orders))
             self.stop_orders = {}
 
+    def get_maintenance_margin_rate_and_amt(self, notional_value):
+        '''
+        Returns the (maintenance_margin_rate, maintenance_margin_amount) for the corresponding notional value
+        '''
+        ind = bisect.bisect_left(list(self.tier_dict.keys()), notional_value)
+        return list(self.tier_dict.values())[ind]
+    
+    def get_liquidation_price(self, side, pos_size, entry_price):
+        (mmr, mma) = self.get_maintenance_margin_rate_and_amt(notional_value=pos_size * entry_price)
+        # print("side: ", side)
+        # print("pos_size: ", pos_size)
+        # print("entry price: ", entry_price)
+        # print("Margin rate: ", mmr)
+        # print("Margin amount: ", mma)
+        # Wallet balance
+        wb = self.broker.cash
+        # Total maintenance margin. =0 if in isolated mode
+        tmm = 0
+        # Unrealized PNL of all other contracts. =0 if in isolated mode
+        upnl = 0
+        # Maintenance amount of BOTH position (one-way mode)
+        cum_B = mma
+        # Maintenance amount of LONG position (hedge mode)
+        cum_L = 0
+        # Maintenance amount of SHORT position (hedge mode)
+        cum_S = 0
+        # Direction of BOTH position, 1 as long position, -1 as short position
+        side_BOTH = side
+        # Absolute value of BOTH position size (one-way mode)
+        pos_BOTH = pos_size
+        # Entry price of BOTH position size (one-way mode)
+        ep_BOTH = entry_price
+        # Absolute value of LONG position size (hedge mode)
+        pos_LONG = 0
+        # Entry price of LONG position size (hedge mode)
+        ep_LONG = 0
+        # Absolute value of SHORT position size (hedge mode)
+        pos_SHORT = 0
+        # Entry price of SHORT position size (hedge mode)
+        ep_SHORT = 0
+        # Maintenance margin rate of BOTH position (one-way mode)
+        mmr_B = mmr
+        # Maintenance margin rate of LONG position (hedge mode)
+        mmr_L = 0
+        # Maintenance margin rate of SHORT position (hedge mode)
+        mmr_S = 0
+
+        # Liquidation price
+        num = (wb - tmm + upnl + cum_B + cum_L + cum_S - side_BOTH * pos_BOTH * ep_BOTH - pos_LONG * ep_LONG + pos_SHORT * ep_SHORT) 
+        den = (pos_BOTH * mmr_B + pos_LONG * mmr_L + pos_SHORT * mmr_S - side_BOTH * pos_BOTH - pos_LONG + pos_SHORT)
+
+        lp = num / den
+
+        return lp
+
+
     def sell_stop_loss(self, close, multiplier=1):
         self.log(f"=== sell cerebro value {self.broker.getvalue()}")
         size = self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
-        # size = self.cerebro.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close * (self.p.short_perc / 100)
+        # size = self.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close * (self.p.short_perc / 100)
         self.log(f"=== sell size, {size}")
-        # Binance minimum order size
+
+        # Binance minimum order size is 0.0001
         size = max(size * multiplier, 0.0001)
 
         sell_order = self.sell(
@@ -182,6 +258,16 @@ class StrategyBase(bt.Strategy):
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
         stop_price = close + atrdist * self.atr[0]
 
+        lp = self.get_liquidation_price(side=-1, pos_size=size, entry_price=close)
+        lp_with_buffer = lp - self.atr[0] * 0.5
+        # lp_with_buffer = lp - 100
+        # lp_with_buffer = lp
+        is_liquidable = lp_with_buffer < stop_price
+        # if is_liquidable:
+        #     txt = colored(f"===== STOP SHORT Liquidation price {lp_with_buffer} used instead of {stop_price}", 'cyan')
+        #     print(txt)
+        stop_price = min(stop_price, lp_with_buffer)
+
         stop_order = self.buy(
             exectype=bt.Order.StopLimit, 
             size=sell_order.size, 
@@ -192,12 +278,13 @@ class StrategyBase(bt.Strategy):
         )
 
         stop_order.addinfo(name="STOPLOSS for SHORT")
+        stop_order.addinfo(is_liquidable=is_liquidable)
         self.stop_orders[stop_order.ref] = stop_order
         
     def buy_stop_loss(self, close, multiplier=1):
         self.log(f"=== buy cerebro value {self.broker.getvalue()}")
         size = self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
-        # size = self.cerebro.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close
+        # size = self.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close
         self.log(f"=== buy size, {size}")
         # Binance minimum order size
         size = max(size * multiplier, 0.0001)
@@ -212,6 +299,16 @@ class StrategyBase(bt.Strategy):
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
         stop_price = close - atrdist * self.atr[0]
 
+        lp = self.get_liquidation_price(side=1, pos_size=size, entry_price=close)
+        lp_with_buffer = lp + self.atr[0] * 0.5
+        # lp_with_buffer = lp + 100
+        # lp_with_buffer = lp
+        is_liquidable = lp_with_buffer > stop_price
+        # if is_liquidable:
+        #     txt = colored(f"===== STOP LONG Liquidation price {lp_with_buffer} used instead of {stop_price}", 'cyan')
+        #     print(txt)
+        stop_price = max(stop_price, lp_with_buffer)
+
         stop_order = self.sell(
             exectype=bt.Order.StopLimit,
             size=buy_order.size,
@@ -222,6 +319,7 @@ class StrategyBase(bt.Strategy):
         )
         # Kwargs do not work in bt-ccxt
         stop_order.addinfo(name="STOPLOSS for LONG")
+        stop_order.addinfo(is_liquidable=is_liquidable)
         self.stop_orders[stop_order.ref] = stop_order
 
     def log(self, txt, level=logging.DEBUG, send_telegram=False, color=None, dt=None):
@@ -231,12 +329,6 @@ class StrategyBase(bt.Strategy):
 
         dt = dt or self.datas[0].datetime.date(0)
         hh = self.datas[0].datetime.time()
-        # if len(self.datas) > 1:
-        #     dt = dt or self.datas[1].datetime.date(0)
-        #     hh = self.datas[1].datetime.time()
-        # else:
-        #     dt = dt or self.datas[0].datetime.date(0)
-        #     hh = self.datas[0].datetime.time()
 
         logging.log(level, '%s %s, %s' % (dt.isoformat(), hh, log_txt))
 
@@ -617,13 +709,16 @@ class StochMACD(StrategyBase):
                 (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) >= 0
             )
 
+            # Higher chance of liquidation
             if alt_should_sell and should_sell:
-                # print("FAST SHOULD SELL AS WELL")
-                sizer_multiplier *= 1.5
+                # txt = colored("+++++++++++++ ALT SHOULD SELL AS WELL", 'magenta')
+                # print(txt)
+                sizer_multiplier *= 1.1
 
             if alt_should_buy and should_buy:
-                # print("FAST SHOULD BUY AS WELL")
-                sizer_multiplier *= 1.5
+                # txt = colored("+++++++++++++ ALT SHOULD BUY AS WELL", 'magenta')
+                # print(txt)
+                sizer_multiplier *= 1.1
 
         reversal_sensitivity = self.p.reversal_sensitivity
         should_stop_loss = True
@@ -641,8 +736,6 @@ class StochMACD(StrategyBase):
                         (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity
                         # and (rsi_should_buy)
                         ):
-
-                        # print("REVERSAL SELL")
 
                         self.log('INTERIM REVERSAL SELL, %.2f' % self.dataclose[0])
                         self.close_and_cancel_stops()
@@ -672,7 +765,6 @@ class StochMACD(StrategyBase):
                         (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity
                         # and (rsi_should_sell)
                     ):
-                        # print("REVERSAL BUY")
                         self.log('INTERIM REVERSAL BUY, %.2f' % self.dataclose[0])
                         self.close_and_cancel_stops()
                         if should_trade_on_reversal:
@@ -759,12 +851,28 @@ class WfaStochMACD(StrategyBase):
         
         self.atr = bt.indicators.ATR(self.datas[0], period=self.params_to_use['atrperiod'])
 
-        self.stochrsi = StochasticRSI(k_period=self.params_to_use['stoch_k_period'],
-                                   d_period=self.params_to_use['stoch_d_period'],
-                                   rsi_period=self.params_to_use['stoch_rsi_period'],
-                                   stoch_period=self.params_to_use['stoch_period'],
-                                   upperband=self.params_to_use['stoch_upperband'],
-                                   lowerband=self.params_to_use['stoch_lowerband'])
+        self.rsi = bt.ind.RSI(self.datas[0], period=self.params_to_use['stoch_rsi_period'], safediv=True)
+
+        self.stochrsi = StochasticRSI(
+            self.datas[0],
+            k_period=self.params_to_use['stoch_k_period'],
+            d_period=self.params_to_use['stoch_d_period'],
+            rsi_period=self.params_to_use['stoch_rsi_period'],
+            stoch_period=self.params_to_use['stoch_period'],
+            upperband=self.params_to_use['stoch_upperband'],
+            lowerband=self.params_to_use['stoch_lowerband']
+        )
+
+        if len(self.datas) > 1:
+            self.alt_stochrsi = StochasticRSI(
+                self.datas[1],
+                k_period=self.params_to_use['stoch_k_period'],
+                d_period=self.params_to_use['stoch_d_period'],
+                rsi_period=self.params_to_use['stoch_rsi_period'],
+                stoch_period=self.params_to_use['stoch_period'],
+                upperband=self.params_to_use['stoch_upperband'],
+                lowerband=self.params_to_use['stoch_lowerband']
+            )
         
 
     def get_params_for_time(self):
@@ -793,6 +901,15 @@ class WfaStochMACD(StrategyBase):
         self.params_to_use = self.get_params_for_time()
         close = self.dataclose[0]
         currentStochRSI = self.stochrsi.l.fastk[0]
+
+        if len(self.datas) > 1:
+            time_str = self.datas[1].datetime.time().strftime('%H:%M:%S')
+            # print(time_str)
+            minutes = int(time_str.split(':')[1])
+            # print("minutes: ", minutes)
+            # print(f"datetime: {dt}")
+            if minutes != 0:
+                return
 
         # if self.status == "LIVE":
         # print("===== Values: =====")
@@ -832,45 +949,70 @@ class WfaStochMACD(StrategyBase):
         if ENV == PRODUCTION and self.status != "LIVE":
             return
 
-        macd_should_sell = (self.mcross[0] < 0.0 or (self.macd[-1] > 0 and self.macd[0] <= 0))
+        sizer_multiplier = 1
 
         # macd_should_sell = (self.mcross[0] < 0.0 or 
         #     (self.macd[-1] > 0 and self.macd[0] <= 0) or
-        #     (self.macd[-2] > 0 and self.macd[0] <= 0))
-
-        macd_should_buy = (self.mcross[0] > 0.0 or (self.macd[-1] < 0 and self.macd[0] >= 0))
+        #     (self.macd[-2] > 0 and self.macd[-1] <= 0))
 
         # macd_should_buy = (self.mcross[0] > 0.0 or 
         #     (self.macd[-1] < 0 and self.macd[0] >= 0) or
-        #     (self.macd[-2] < 0 and self.macd[0] >= 0))
+        #     (self.macd[-2] < 0 and self.macd[-1] >= 0))
+
+        lowerband_count = -4
+        did_stochrsi_crossup = True
+        while lowerband_count <= 0:
+            if lowerband_count == 0:
+                did_stochrsi_crossup = did_stochrsi_crossup and self.stochrsi.l.fastk[lowerband_count] >= self.params_to_use['stoch_lowerband']
+            else:
+                did_stochrsi_crossup = did_stochrsi_crossup and self.stochrsi.l.fastk[lowerband_count] < self.params_to_use['stoch_lowerband']
+            lowerband_count += 1
+
+        upperband_count = -4
+        did_stochrsi_crossdown = True
+        while upperband_count <= 0:
+            if upperband_count == 0:
+                did_stochrsi_crossdown = did_stochrsi_crossdown and self.stochrsi.l.fastk[upperband_count] <= self.params_to_use['stoch_upperband']
+            else:
+                did_stochrsi_crossdown = did_stochrsi_crossdown and self.stochrsi.l.fastk[upperband_count] > self.params_to_use['stoch_upperband']
+            upperband_count += 1
+
+        rsi_should_buy = self.rsi[0] < 50 or self.rsi[-1] < 50
+        rsi_should_sell = self.rsi[0] > 50 or self.rsi[-1] > 50
 
         should_buy = (
-            self.mcross[0] > 0.0 and
-            # macd_should_buy and
-            self.stochrsi.l.fastk[-3] < self.params_to_use['stoch_lowerband'] and 
-            self.stochrsi.l.fastk[-2] < self.params_to_use['stoch_lowerband'] and 
-            self.stochrsi.l.fastk[-1] < self.params_to_use['stoch_lowerband'] and 
-            self.stochrsi.l.fastk[0] >= self.params_to_use['stoch_lowerband']
-#             self.stochrsi.l.fastk[-3] < self.params_to_use.stoch_lowerband and 
-#             self.stochrsi.l.fastk[-2] < self.params_to_use.stoch_lowerband and 
-#             self.stochrsi.l.fastk[-1] < self.params_to_use.stoch_lowerband and 
-#             (self.stochrsi.l.fastk[0] >= self.params_to_use.stoch_lowerband or self.stochrsi.l.fastk[-1] >= self.params_to_use.stoch_lowerband) and
-#             (self.mcross[0] > 0.0 or self.mcross[-1] > 0.0)
+            (self.mcross[0] > 0 or self.mcross[-1] > 0) and
+            rsi_should_buy and
+            did_stochrsi_crossup
         )
         
         should_sell = (
-            self.mcross[0] < 0.0 and
-            # macd_should_sell and
-            self.stochrsi.l.fastk[-3] > self.params_to_use['stoch_upperband'] and 
-            self.stochrsi.l.fastk[-2] > self.params_to_use['stoch_upperband'] and 
-            self.stochrsi.l.fastk[-1] > self.params_to_use['stoch_upperband'] and 
-            self.stochrsi.l.fastk[0] <= self.params_to_use['stoch_upperband']
-#             self.stochrsi.l.fastk[-3] > self.params_to_use.stoch_upperband and 
-#             self.stochrsi.l.fastk[-2] > self.params_to_use.stoch_upperband and 
-#             self.stochrsi.l.fastk[-1] > self.params_to_use.stoch_upperband and 
-#             (self.stochrsi.l.fastk[0] <= self.params_to_use.stoch_upperband or self.stochrsi.l.fastk[-1] <= self.params_to_use.stoch_upperband) and
-#             (self.mcross[0] < 0.0 or self.mcross[-1] < 0.0)
+            (self.mcross[0] < 0 or self.mcross[-1] < 0) and
+            rsi_should_sell and
+            did_stochrsi_crossdown
         )
+
+        if len(self.datas) > 1:
+            alt_should_sell = (
+                self.alt_stochrsi.l.fastk[-1] > self.alt_stochrsi.l.fastd[-1] and
+                (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) <= 0
+            )
+
+            alt_should_buy = (
+                self.alt_stochrsi.l.fastk[-1] < self.alt_stochrsi.l.fastd[-1] and
+                (self.alt_stochrsi.l.fastk[0] - self.alt_stochrsi.l.fastd[0]) >= 0
+            )
+
+            # Higher chance of liquidation
+            if alt_should_sell and should_sell:
+                # txt = colored("+++++++++++++ ALT SHOULD SELL AS WELL", 'magenta')
+                # print(txt)
+                sizer_multiplier *= 1.1
+
+            if alt_should_buy and should_buy:
+                # txt = colored("+++++++++++++ ALT SHOULD BUY AS WELL", 'magenta')
+                # print(txt)
+                sizer_multiplier *= 1.1
         
         reversal_sensitivity = self.params_to_use['reversal_sensitivity']
         should_stop_loss = True
@@ -880,36 +1022,28 @@ class WfaStochMACD(StrategyBase):
         # Need to sell
         if self.position.size > 0:
             if should_close_on_reversal:
-                if currentStochRSI > 50 and currentStochRSI < self.params_to_use['stoch_upperband']:
-
-                    # stoch_cross_down = (
-                    #     (self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and 
-                    #     (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity) or
-                    #     (self.stochrsi.l.fastk[-2] > self.stochrsi.l.fastd[-2] and 
-                    #     (self.stochrsi.l.fastk[-1] - self.stochrsi.l.fastd[-1]) <= -reversal_sensitivity)
-                    # )
-
+                if currentStochRSI > self.params_to_use['reversal_upperband'] and currentStochRSI < self.params_to_use['stoch_upperband']:
                     # If fast crosses slow downwards, trend reversal, sell
-                    # if (stoch_cross_down and macd_should_sell):
-                    if (self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and
-                        (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity):
+                    if (
+                        self.stochrsi.l.fastk[-2] > self.stochrsi.l.fastd[-2] and
+                        self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and
+                        (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity
+                        # and (rsi_should_buy)
+                        ):
 
-                        self.close_and_cancel_stops()
                         self.log('INTERIM REVERSAL SELL, %.2f' % self.dataclose[0])
-
+                        self.close_and_cancel_stops()
                         if should_trade_on_reversal:
                             if should_stop_loss:
-                                self.sell_stop_loss(close)   
+                                self.sell_stop_loss(close, multiplier=sizer_multiplier)   
                             else:
                                 self.sell(name="ENTRY SHORT Order")
             
             if should_sell:
-                self.close_and_cancel_stops()
-
                 self.log('REVERSAL SELL, %.2f' % self.dataclose[0])
-                
+                self.close_and_cancel_stops()
                 if should_stop_loss:
-                    self.sell_stop_loss(close)
+                    self.sell_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.sell(name="ENTRY SHORT Order")
                
@@ -917,56 +1051,42 @@ class WfaStochMACD(StrategyBase):
         # Need to buy
         if self.position.size < 0:
             if should_close_on_reversal:
-                if currentStochRSI > self.params_to_use['stoch_lowerband'] and currentStochRSI < 50:
-
-                    # stoch_cross_up = (
-                    #     (self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and 
-                    #     (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity) or
-                    #     (self.stochrsi.l.fastk[-2] < self.stochrsi.l.fastd[-2] and 
-                    #     (self.stochrsi.l.fastk[-1] - self.stochrsi.l.fastd[-1]) >= reversal_sensitivity)
-                    # )
-
+                if currentStochRSI > self.params_to_use['stoch_lowerband'] and currentStochRSI < self.params_to_use['reversal_lowerband']:
                     # If fast crosses slow upwards, trend reversal, buy
-                    # if (stoch_cross_up and macd_should_buy):
-                    if (self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and 
-                        (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity):
-
-                        self.close_and_cancel_stops()
+                    if (
+                        self.stochrsi.l.fastk[-2] < self.stochrsi.l.fastd[-2] and
+                        self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and 
+                        (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity
+                        # and (rsi_should_sell)
+                    ):
                         self.log('INTERIM REVERSAL BUY, %.2f' % self.dataclose[0])
-
+                        self.close_and_cancel_stops()
                         if should_trade_on_reversal:
                             if should_stop_loss:
-                                self.buy_stop_loss(close)
+                                self.buy_stop_loss(close, multiplier=sizer_multiplier)
                             else:
                                 self.buy(name="ENTRY LONG Order")
                     
             if should_buy:
-                self.close_and_cancel_stops()
                 self.log('REVERSAL BUY, %.2f' % self.dataclose[0])
-                
+                self.close_and_cancel_stops()
                 if should_stop_loss:                
-                    self.buy_stop_loss(close)
+                    self.buy_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.buy(name="ENTRY LONG Order")
-
-           
                 
         if self.position.size == 0:
             if should_buy:
-                # self.close_and_cancel_stops()
                 self.log('BUY CREATE, %.2f' % self.dataclose[0])
-                
                 if should_stop_loss:
-                    self.buy_stop_loss(close)
+                    self.buy_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.buy(name="ENTRY LONG Order")
             
 
             if should_sell:
-                # self.close_and_cancel_stops()
                 self.log('SELL CREATE, %.2f' % self.dataclose[0])
-                
                 if should_stop_loss:
-                    self.sell_stop_loss(close)
+                    self.sell_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.sell(name="ENTRY SHORT Order")

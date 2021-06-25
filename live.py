@@ -10,7 +10,7 @@ from config import BINANCE, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, D
 
 from utils import print_trade_analysis, print_sqn, send_telegram_message, get_formatted_datetime
 
-from Strategies import StochMACD, TESTBUY
+from strategies import StochMACD, TESTBUY
 from Parser import parse_args
 from Datasets import *
 
@@ -44,25 +44,29 @@ def main():
             sandbox=SANDBOX
         )
 
-        # store.exchange.load_markets()
-        # print(store.exchange.markets['BTC/USDT'])
-
-        # response = store.exchange.fapiPrivate_get_positionside_dual()
-        # if response['dualSidePosition']:
-        #     print('You are in Hedge Mode')
-        # else:
-        #     print('You are in One-way Mode')
-        
-        # Set leverage multiplier
         symbol = 'BTC/USDT'
         market = store.exchange.market(symbol)
+        # print(store.exchange.markets[symbol])
 
-        response = store.exchange.fapiPrivate_post_leverage({
+        dual_response = store.exchange.fapiPrivate_get_positionside_dual()
+        if dual_response['dualSidePosition']:
+            print('You are in Hedge Mode')
+        else:
+            print('You are in One-way Mode')
+        
+        # Set leverage multiplier
+        type_response = store.exchange.fapiPrivatePostMarginType ({
+            'symbol': market['id'],
+            'marginType': 'ISOLATED',
+        })
+        print(type_response)
+
+        leverage_response = store.exchange.fapiPrivate_post_leverage({
             'symbol': market['id'],
             'leverage': leverage,
         })
 
-        pprint(response)
+        pprint(leverage_response)
 
         broker_mapping = {
             'order_types': {
@@ -137,20 +141,19 @@ def main():
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
     # Include Strategy
-    cerebro.addstrategy(StochMACD,
-                        macd1=9,
-                        macd2=21,
-                        macdsig=8,
-                        atrdist=5,
-                        reversal_sensitivity=18,
-                        cashperc=cashperc,
-                        short_perc=1,
-                        leverage=leverage)
+    # cerebro.addstrategy(StochMACD,
+    #                     macd1=9,
+    #                     macd2=21,
+    #                     macdsig=8,
+    #                     atrdist=5,
+    #                     reversal_sensitivity=18,
+    #                     cashperc=cashperc,
+    #                     short_perc=1,
+    #                     leverage=leverage)
 
     cerebro.addstrategy(TESTBUY,
                         cashperc=cashperc,
-                        leverage=leverage,
-                        cerebro=cerebro)
+                        leverage=leverage)
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()

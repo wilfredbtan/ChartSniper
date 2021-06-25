@@ -6,7 +6,7 @@ import datetime as dt
 from dateutil.relativedelta import relativedelta
 from optimizer import optimize_strategy
 from teststrategy import run_strategy, test_strategies
-from Strategies import StochMACD, WfaStochMACD
+from strategies import StochMACD, WfaStochMACD
 
 '''
 1. Create wfa results directory
@@ -30,8 +30,8 @@ my_columns = ['In/Out', 'Start Date', 'End Date', 'SQN', 'Trades', 'PnL']
 rows = []
 
 def run_wfa():
-    months_in = 12
-    months_out = 6
+    months_in = 2
+    months_out = 2
     start_sample_date = dt.datetime(2018,2,1)
     end_sample_date = dt.datetime(2021,6,1)
     current_sample_date = start_sample_date
@@ -58,15 +58,18 @@ def run_wfa():
             fromdate=in_period[0],
             todate=in_period[1],
             cash=cash,
-            macd1=range(7, 12),
-            macd2=range(14, 26),
-            macdsig=range(5, 9),
-            # macd1=9,
-            # macd2=21,
-            # macdsig=8,
+            # macd1=range(7, 12),
+            # macd2=range(14, 26),
+            # macdsig=range(5, 9),
+            macd1=9,
+            macd2=21,
+            macdsig=8,
+            atrdist=5,
             # atrdist=range(1,10),
-            # reversal_sensitivity=range(1, 20),
-            reversal_sensitivity=17,
+            reversal_sensitivity=range(10, 20),
+            # reversal_sensitivity=17,
+            reversal_lowerband=43,
+            reversal_upperband=48,
             short_perc=1,
             leverage=5,
         )
