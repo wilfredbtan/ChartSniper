@@ -1,12 +1,12 @@
 from excelwriter import get_df_row, save_dataframe_to_excel
 import os
 from pprint import pprint
+from Parser import parse_args
 import time
 import datetime as dt
 from dateutil.relativedelta import relativedelta
-from optimizer import optimize_strategy
-from teststrategy import run_strategy, test_strategies
-from strategies import StochMACD, WfaStochMACD
+from teststrategy import run_strategy
+from strategies import StochMACD
 
 '''
 1. Create wfa results directory
@@ -20,30 +20,37 @@ from strategies import StochMACD, WfaStochMACD
 6. Return overall average from all out-samples
 '''
 
-current_directory = os.getcwd()
-wfa_directory = os.path.join(current_directory, r'wfa')
-algo_name = "stoch_macd_halfhalf"
-algo_directory = os.path.join(wfa_directory, algo_name)
-os.makedirs(algo_directory, exist_ok=True)
+# current_directory = os.getcwd()
+# wfa_directory = os.path.join(current_directory, r'wfa')
+# algo_name = "stoch_macd"
+# algo_directory = os.path.join(wfa_directory, algo_name)
+# os.makedirs(algo_directory, exist_ok=True)
 
 my_columns = ['In/Out', 'Start Date', 'End Date', 'SQN', 'Trades', 'PnL']
 rows = []
 
-def run_test():
+def run_test(args=None):
+    args = parse_args(args)
+
     test_period = 12
-    step = 3
-    start_sample_date = dt.datetime(2018,2,1)
+    step = 1
+    start_sample_date = dt.datetime(2017,9,1)
     end_sample_date = dt.datetime(2021,6,1)
     current_sample_date = start_sample_date
     dataset = 'btc_hourly'
     cash = 5000
+
+    count = 0
+    total_sqn = 0
+    total_pnl = 0
+    total_trades = 0
 
     while (current_sample_date + relativedelta(months=+test_period) < end_sample_date):
         in_period = (current_sample_date, current_sample_date + relativedelta(months=+test_period))
 
         param_names = ['sqn', 'trades', 'pnl', 'macd1', 'macd2', 'macdsig', 'atrdist', 'reversal_sensitivity']
 
-        print(f"=== run period {in_period[0]} to {in_period[1]}")
+        print(f"=== run period {in_period[0].date()} to {in_period[1].date()}")
 
         result = run_strategy(
             strategy=StochMACD, 
@@ -51,15 +58,46 @@ def run_test():
             fromdate=in_period[0],
             todate=in_period[1],
             cash=cash,
+            macd1=args.macd1,
+            macd2=args.macd2,
+            macdsig=args.macdsig,
+            stoch_k_period=args.stoch_k_period,
+            stoch_d_period=args.stoch_d_period,
+            stoch_rsi_period=args.stoch_rsi_period,
+            stoch_period=args.stoch_period,
+            stoch_upperband=args.stoch_upperband,
+            stoch_lowerband=args.stoch_lowerband,
+            rsi_upperband=args.rsi_upperband,
+            rsi_lowerband=args.rsi_lowerband,
+            atrperiod=args.atrperiod,
+            atrdist=args.atrdist,
+            reversal_sensitivity=args.reversal_sensitivity,
+            reversal_lowerband=args.reversal_lowerband,
+            reversal_upperband=args.reversal_upperband,
+            loglevel=args.loglevel,
+            leverage=args.leverage,
+            cashperc=args.cashperc,
+            isWfa=False
         )
 
         print("==== results =====")
         print("sqn", result['sqn'])
-        print("trades", result['trades'])
         print("pnl", result['pnl'])
-        print("params", result['params'].__dict__)
+        print("trades", result['trades'])
+        # print("params", result['params'].__dict__)
+
+        total_sqn += result['sqn']
+        total_pnl += result['pnl']
+        total_trades += result['trades']
+        count += 1
 
         current_sample_date += relativedelta(months=+step)
+    
+    # Final result
+    print("+++++ Final Result +++++")
+    print(f"Avg SQN: {total_sqn / count : .2f}")
+    print(f"Avg pnl: {total_pnl / count : .2f}")
+    print(f"Avg trades: {total_trades / count: .2f}")
 
 
 if __name__ == '__main__':

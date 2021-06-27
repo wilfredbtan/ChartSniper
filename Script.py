@@ -47,11 +47,17 @@ date = all_hourly_date
 # date = all_minute_date
 # date = ''
 
-reversal_lowerband = '--reversal_lowerband 43'
 # reversal_lowerband = '--reversal_lowerband 50'
+reversal_lowerband = '--reversal_lowerband 43'
 
-reversal_upperband = '--reversal_upperband 48'
 # reversal_upperband = '--reversal_upperband 50'
+reversal_upperband = '--reversal_upperband 48'
+
+rsi_upperband = '--rsi_upperband 45'
+# rsi_upperband = '--rsi_upperband 50'
+
+rsi_lowerband = '--rsi_lowerband 49'
+# rsi_lowerband = '--rsi_lowerband 50'
 
 
 # Optimization
@@ -69,21 +75,62 @@ reversal_upperband = '--reversal_upperband 48'
 # os.system(f'python3 backtest.py -o {date}')
 
 # Individual tests
-# Dividing short amount by 2 makes the profit much higher. Maybe more reliable for longs
-print("===== Short Bull (4 mths) =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
-print("===== Bear =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
-print("===== Crab =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
-print("===== Bull =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
-print("===== All =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# print("===== Short Bull (4 mths) =====")
+# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
+# print("===== Bear =====")
+# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
+# print("===== Crab =====")
+# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
+# print("===== Bull =====")
+# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
+# print("===== All =====")
+# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 # print("===== Custom =====")
-# os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -v')
+# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -v')
+
+print("===== Multiple Runs =====")
+os.system(f'python3 multiple_runs.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
+With extra multiplier
++++++ Final Result +++++
+Avg SQN:  0.80
+Avg pnl:  20739.30
+Avg trades:  23.18
+--- 210.8942849636078 seconds ---
+
+Without, 2 datasets
++++++ Final Result +++++
+Avg SQN:  0.79
+Avg pnl:  20209.80
+Avg trades:  23.18
+--- 209.44411492347717 seconds ---
+
+Without, 1 dataset
++++++ Final Result +++++
+Avg SQN:  0.80
+Avg pnl:  21263.67
+Avg trades:  23.52
+--- 50.27589416503906 seconds ---
+
+
+### RSI upper and lowerband: 
+===== All Hourly =====
+(40, 55): RSI > upperband ; RSI < lowerband
+[1.139936767238418, 485637.1, 46, 48]
+[1.139936767238418, 485637.1, 47, 48]
+[1.139936767238418, 485637.1, 48, 48]
+[1.1361779205317526, 222614.39, 45, 45]
+[1.1360687646543994, 794446.99, 45, 48]
+
+(40, 55): RSI < upperband ; RSI > lowerband
+- Why is the upperband band lower than the lower band lol
+[1.681991810795637, 572973.07, 45, 49]
+[1.681991810795637, 572973.07, 45, 50]
+[1.681991810795637, 572973.07, 45, 51]
+[1.681991810795637, 572973.07, 46, 49]
+[1.681991810795637, 572973.07, 46, 50]]
+
 ### 16 Reversal Sensitivity
 ===== Short Bull (4 mths) =====
 [0.36963485268010376, 3069.39, 5.0, 9, 21, 8, 16.0, 43.0, 48.0]

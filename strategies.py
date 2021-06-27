@@ -8,7 +8,7 @@ from backtrader.dataseries import TimeFrame
 from termcolor import colored
 import logging
 import backtrader as bt
-from Indicators import StochasticRSI, MACD
+from Indicators import StochasticRSI, MACD, MFI, CMF
 from config import PRODUCTION, SANDBOX, ENV
 from utils import send_telegram_message, get_formatted_datetime
 
@@ -503,8 +503,15 @@ class StochMACD(StrategyBase):
         ('stoch_upperband', 80.0),
         ('stoch_lowerband', 20.0),
         
-        ('rsi_upperband', 60.0),
-        ('rsi_lowerband', 40.0),
+        ('rsi_upperband', 70.0),
+        ('rsi_lowerband', 30.0),
+
+        ('mfi_upperband', 80.0),
+        ('mfi_lowerband', 20.0),
+
+        ('cmf_period', 20),
+        ('cmf_upperband', 0.2),
+        ('cmf_lowerband', -0.2),
         
         ('atrperiod', 14),  # ATR Period (standard)
         ('atrdist', 5),   # ATR distance for stop price
@@ -531,10 +538,12 @@ class StochMACD(StrategyBase):
 
         # Cross of macd.macd and macd.signal
         self.mcross = bt.indicators.CrossOver(self.macd.macd, self.macd.signal)
+        self.mcross.plotinfo.plot = False
 
         self.rsi = bt.ind.RSI(self.datas[0], period=self.p.stoch_rsi_period, safediv=True)
         
         self.atr = bt.indicators.ATR(self.datas[0], period=self.p.atrperiod)
+        self.atr.plotinfo.plot = False
 
         self.stochrsi = StochasticRSI(
             self.datas[0],
@@ -545,6 +554,7 @@ class StochMACD(StrategyBase):
             upperband=self.p.stoch_upperband,
             lowerband=self.p.stoch_lowerband,
         )
+        self.stochrsi.plotinfo.plot = False
 
         if len(self.datas) > 1:
             self.alt_stochrsi = StochasticRSI(
@@ -556,6 +566,11 @@ class StochMACD(StrategyBase):
                 upperband=self.p.stoch_upperband,
                 lowerband=self.p.stoch_lowerband
             )
+            self.alt_stochrsi.plotinfo.plot = False
+
+
+        # self.mfi = MFI(self.datas[1], period=self.p.stoch_rsi_period)
+        # self.cmf = CMF(self.datas[1], period=self.p.cmf_period)
 
     def get_params_for_time(self):
         dd = self.datas[0].datetime.date(0)
@@ -681,18 +696,34 @@ class StochMACD(StrategyBase):
                 did_stochrsi_crossdown = did_stochrsi_crossdown and self.stochrsi.l.fastk[upperband_count] > self.p.stoch_upperband
             upperband_count += 1
 
-        rsi_should_buy = self.rsi[0] < 50 or self.rsi[-1] < 50
-        rsi_should_sell = self.rsi[0] > 50 or self.rsi[-1] > 50
+        # rsi_should_buy = self.rsi[0] > 50 or self.rsi[-1] > 50
+        # rsi_should_sell = self.rsi[0] < 50 or self.rsi[-1] < 50
+        rsi_should_buy = self.rsi[0] < self.p.rsi_upperband or self.rsi[-1] < self.p.rsi_upperband
+        rsi_should_sell = self.rsi[0] > self.p.rsi_lowerband or self.rsi[-1] > self.p.rsi_lowerband
+
+        # mfi_should_buy = self.mfi[0] < self.p.mfi_lowerband or self.mfi[-1] < self.p.mfi_lowerband
+        # mfi_should_sell = self.mfi[0] > self.p.mfi_upperband or self.mfi[-1] < self.p.mfi_upperband
+        # mfi_should_buy = self.mfi[0] < self.p.mfi_lowerband
+        # mfi_should_sell = self.mfi[0] > self.p.mfi_upperband
+
+        # cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband or self.cmf[-1] < self.p.cmf_lowerband
+        # cmf_should_sell = self.cmf[0] > self.p.cmf_upperband or self.cmf[-1] < self.p.cmf_upperband
+        # cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband 
+        # cmf_should_sell = self.cmf[0] > self.p.cmf_upperband
 
         should_buy = (
             (self.mcross[0] > 0 or self.mcross[-1] > 0) and
             rsi_should_buy and
+            # cmf_should_buy and
+            # mfi_should_buy and
             did_stochrsi_crossup
         )
         
         should_sell = (
             (self.mcross[0] < 0 or self.mcross[-1] < 0) and
             rsi_should_sell and
+            # cmf_should_sell and
+            # mfi_should_sell and
             did_stochrsi_crossdown
         )
 
@@ -708,15 +739,15 @@ class StochMACD(StrategyBase):
             )
 
             # Higher chance of liquidation
-            if alt_should_sell and should_sell:
-                # txt = colored("+++++++++++++ ALT SHOULD SELL AS WELL", 'magenta')
-                # print(txt)
-                sizer_multiplier *= 1.1
+            # if alt_should_sell and should_sell:
+            #     # txt = colored("+++++++++++++ ALT SHOULD SELL AS WELL", 'magenta')
+            #     # print(txt)
+            #     sizer_multiplier *= 1.1
 
-            if alt_should_buy and should_buy:
-                # txt = colored("+++++++++++++ ALT SHOULD BUY AS WELL", 'magenta')
-                # print(txt)
-                sizer_multiplier *= 1.1
+            # if alt_should_buy and should_buy:
+            #     # txt = colored("+++++++++++++ ALT SHOULD BUY AS WELL", 'magenta')
+            #     # print(txt)
+            #     sizer_multiplier *= 1.1
 
         reversal_sensitivity = self.p.reversal_sensitivity
         should_stop_loss = True

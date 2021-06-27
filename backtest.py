@@ -74,14 +74,19 @@ def runstrat(args=None):
             # macd1=10,
             # macd2=16,
             # macdsig=5,
+
             # atrdist=range(1,10),
             atrdist=5,
-            reversal_sensitivity=range(5, 20),
-            # reversal_sensitivity=17,
+
+            # reversal_sensitivity=range(5, 20),
+            reversal_sensitivity=17,
+
+            rsi_upperband=range(40,55),
+            rsi_lowerband=range(40,55),
 
             # reversal_lowerband=range(40,53),
-            reversal_lowerband=43,
             # reversal_upperband=range(45,55),
+            reversal_lowerband=43,
             reversal_upperband=48,
 
             # leverage=args.leverage,
@@ -105,14 +110,16 @@ def runstrat(args=None):
                     [
                         sqn['sqn'],
                         PnL, 
-                        strategy.p.atrdist,
-                        strategy.p.macd1, 
-                        strategy.p.macd2, 
-                        strategy.p.macdsig, 
-                        strategy.p.reversal_sensitivity, 
-                        strategy.p.reversal_lowerband,
-                        strategy.p.reversal_upperband,
+                        # strategy.p.atrdist,
+                        # strategy.p.macd1, 
+                        # strategy.p.macd2, 
+                        # strategy.p.macdsig, 
+                        # strategy.p.reversal_sensitivity, 
+                        # strategy.p.reversal_lowerband,
+                        # strategy.p.reversal_upperband,
                         # strategy.p.leverage, 
+                        strategy.p.rsi_upperband,
+                        strategy.p.rsi_lowerband,
                     ]
                 )
         sort_by_analyzer = sorted(final_results_list, key=lambda x: x[0], reverse=True)
@@ -133,6 +140,10 @@ def runstrat(args=None):
             stoch_lowerband=args.stoch_lowerband,
             rsi_upperband=args.rsi_upperband,
             rsi_lowerband=args.rsi_lowerband,
+            # mfi_upperband=50,
+            # mfi_lowerband=50,
+            cmf_upperband=0.0,
+            cmf_lowerband=-0.0,
             atrperiod=args.atrperiod,
             atrdist=args.atrdist,
             reversal_sensitivity=args.reversal_sensitivity,
@@ -170,6 +181,8 @@ def runstrat(args=None):
                 result[0].p.macd2, 
                 result[0].p.macdsig, 
                 result[0].p.reversal_sensitivity, 
+                result[0].p.rsi_upperband,
+                result[0].p.rsi_upperband,
                 result[0].p.reversal_lowerband,
                 result[0].p.reversal_upperband,
                 # result[0].p.leverage, 

@@ -54,3 +54,54 @@ class MACD(bt.indicators.MACD):
         self.p.period_me1 = period_me1
         self.p.period_me2 = period_me2
         self.p.period_signal = period_signal
+
+
+# Volume indicators
+class MFI(bt.Indicator):
+    lines = ('mfi',)
+    params = dict(period=14)
+
+    alias = ('MoneyFlowIndicator',)
+
+    def __init__(self):
+        tprice = (self.data.close + self.data.low + self.data.high) / 3.0
+        mfraw = tprice * self.data.volume
+
+        flowpos = bt.ind.SumN(mfraw * (tprice > tprice(-1)), period=self.p.period)
+        flowneg = bt.ind.SumN(mfraw * (tprice < tprice(-1)), period=self.p.period)
+
+        mfiratio = bt.ind.DivByZero(flowpos, flowneg, zero=100.0)
+        self.l.mfi = 100.0 - 100.0 / (1.0 + mfiratio)
+
+class CMF(bt.Indicator):
+
+    alias = ('ChaikinMoneyFlow',)
+ 
+    lines = ('money_flow',)
+    params = (
+        ('period', 20),
+    )
+ 
+    plotlines = dict(
+        money_flow=dict(
+            _name='CMF',
+            color='green',
+            alpha=0.50
+        )
+    )
+ 
+    def __init__(self):
+        # Let the indicator get enough data
+        self.addminperiod(self.p.period)
+ 
+        # Plot horizontal Line
+        self.plotinfo.plotyhlines = [0]
+ 
+        # Aliases to avoid long lines
+        c = self.data.close
+        h = self.data.high
+        l = self.data.low
+        v = self.data.volume
+        
+        self.data.ad = bt.If(bt.Or(bt.And(c == h, c == l), h == l), 0, (bt.ind.DivByZero((2*c-l-h),(h-l),zero=0.0))*v)
+        self.lines.money_flow = bt.ind.DivByZero(bt.indicators.SumN(self.data.ad, period=self.p.period), bt.indicators.SumN(self.data.volume, period=self.p.period), zero=0.0)

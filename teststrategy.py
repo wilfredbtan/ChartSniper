@@ -73,7 +73,10 @@ def run_strategy(strategy, dataset, fromdate, todate, cash, **kwargs):
     )
 
     cerebro.adddata(data)
+    cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
+
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
+
     cerebro.addstrategy(strategy, **kwargs)
 
     run = cerebro.run()
