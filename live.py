@@ -148,7 +148,6 @@ def main():
     #                     atrdist=5,
     #                     reversal_sensitivity=18,
     #                     cashperc=cashperc,
-    #                     short_perc=1,
     #                     leverage=leverage)
 
     cerebro.addstrategy(TESTBUY,

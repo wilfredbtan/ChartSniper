@@ -18,7 +18,6 @@ class StrategyBase(bt.Strategy):
         ("cashperc", 50),
         ("leverage", 5),
         ('loglevel', logging.WARNING),
-        ('short_perc', 50),
         ('isWfa', False)
     )
 
@@ -243,7 +242,6 @@ class StrategyBase(bt.Strategy):
     def sell_stop_loss(self, close, multiplier=1):
         self.log(f"=== sell cerebro value {self.broker.getvalue()}")
         size = self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
-        # size = self.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close * (self.p.short_perc / 100)
         self.log(f"=== sell size, {size}")
 
         # Binance minimum order size is 0.0001

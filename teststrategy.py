@@ -97,5 +97,4 @@ def run_strategy(strategy, dataset, fromdate, todate, cash, **kwargs):
     #     # strategy.p.macd2,
     #     # strategy.p.macdsig,
     #     # strategy.p.reversal_sensitivity,
-    #     # strategy.p.short_perc,
     # ]

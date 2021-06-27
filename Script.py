@@ -47,8 +47,6 @@ date = all_hourly_date
 # date = all_minute_date
 # date = ''
 
-short_perc = '--short_perc 1'
-
 reversal_lowerband = '--reversal_lowerband 43'
 # reversal_lowerband = '--reversal_lowerband 50'
 
@@ -73,17 +71,17 @@ reversal_upperband = '--reversal_upperband 48'
 # Individual tests
 # Dividing short amount by 2 makes the profit much higher. Maybe more reliable for longs
 print("===== Short Bull (4 mths) =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity} {short_perc}')
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
 print("===== Bear =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity} {short_perc}')
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
 print("===== Crab =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity} {short_perc}')
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
 print("===== Bull =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity} {short_perc}')
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
 print("===== All =====")
-os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_perc} {reversal_sensitivity}')
+os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 # print("===== Custom =====")
-# os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_perc} {reversal_sensitivity} {date} -v')
+# os.system(f'python3 backtest.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -v')
 
 '''
 ### 16 Reversal Sensitivity

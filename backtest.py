@@ -88,9 +88,6 @@ def runstrat(args=None):
             # leverage=(1,125),
             leverage=5,
 
-            # short_perc=range(1,100),
-            # short_perc=1,
-
             isWfa=False,
         )
         
@@ -115,7 +112,6 @@ def runstrat(args=None):
                         strategy.p.reversal_sensitivity, 
                         strategy.p.reversal_lowerband,
                         strategy.p.reversal_upperband,
-                        # strategy.p.short_perc,
                         # strategy.p.leverage, 
                     ]
                 )
@@ -142,7 +138,6 @@ def runstrat(args=None):
             reversal_sensitivity=args.reversal_sensitivity,
             reversal_lowerband=args.reversal_lowerband,
             reversal_upperband=args.reversal_upperband,
-            short_perc=args.short_perc,
             loglevel=args.loglevel,
             leverage=args.leverage,
             cashperc=args.cashperc,
@@ -177,7 +172,6 @@ def runstrat(args=None):
                 result[0].p.reversal_sensitivity, 
                 result[0].p.reversal_lowerband,
                 result[0].p.reversal_upperband,
-                # result[0].p.short_perc,
                 # result[0].p.leverage, 
             ]
         )
