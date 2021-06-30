@@ -33,7 +33,10 @@ def run_wfa(wfastrategy, dataset, fromdate, todate, cash, interval_params):
     )
 
     cerebro.adddata(data)
+    cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
+
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
+
     cerebro.addstrategy(wfastrategy, interval_params, isWfa=True)
 
     run = cerebro.run()

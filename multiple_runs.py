@@ -1,3 +1,4 @@
+from termcolor import colored
 from excelwriter import get_df_row, save_dataframe_to_excel
 import os
 from pprint import pprint
@@ -44,6 +45,8 @@ def run_test(args=None):
     total_sqn = 0
     total_pnl = 0
     total_trades = 0
+    min_sqn = float("inf")
+    min_pnl = float("inf")
 
     while (current_sample_date + relativedelta(months=+test_period) < end_sample_date):
         in_period = (current_sample_date, current_sample_date + relativedelta(months=+test_period))
@@ -69,6 +72,8 @@ def run_test(args=None):
             stoch_lowerband=args.stoch_lowerband,
             rsi_upperband=args.rsi_upperband,
             rsi_lowerband=args.rsi_lowerband,
+            # cmf_upperband=0.03,
+            # cmf_lowerband=-0.1,
             atrperiod=args.atrperiod,
             atrdist=args.atrdist,
             reversal_sensitivity=args.reversal_sensitivity,
@@ -81,14 +86,23 @@ def run_test(args=None):
         )
 
         print("==== results =====")
-        print("sqn", result['sqn'])
-        print("pnl", result['pnl'])
-        print("trades", result['trades'])
+        sqn = result['sqn']
+        print(f"sqn: {sqn}")
+
+        pnl = result['pnl']
+        pnl_txt = f'pnl: {pnl}'
+        if result['pnl'] < 0:
+            pnl_txt = colored(pnl_txt, 'red')
+        print(pnl_txt)
+        print(f"trades: {result['trades']}")
         # print("params", result['params'].__dict__)
 
-        total_sqn += result['sqn']
-        total_pnl += result['pnl']
+        total_sqn += sqn
+        total_pnl += pnl
         total_trades += result['trades']
+        min_sqn = min(min_sqn, sqn)
+        min_pnl = min(min_pnl, pnl)
+
         count += 1
 
         current_sample_date += relativedelta(months=+step)
@@ -96,7 +110,9 @@ def run_test(args=None):
     # Final result
     print("+++++ Final Result +++++")
     print(f"Avg SQN: {total_sqn / count : .2f}")
+    print(f"Min SQN: {min_sqn : .2f}")
     print(f"Avg pnl: {total_pnl / count : .2f}")
+    print(f"Min pnl: {min_pnl : .2f}")
     print(f"Avg trades: {total_trades / count: .2f}")
 
 

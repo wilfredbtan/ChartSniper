@@ -7,8 +7,9 @@ from ccxtbt import CCXTStore, CCXTFeed
 from config import BINANCE, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 # from config import BITFINEX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 # from config import KRAKEN, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
+# from config import FTX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 
-from utils import print_trade_analysis, print_sqn, send_telegram_message, get_formatted_datetime
+from utils import print_trade_analysis, print_sqn, send_telegram_message 
 
 from strategies import StochMACD, TESTBUY
 from Parser import parse_args
@@ -22,31 +23,46 @@ def main():
 
     if ENV == PRODUCTION:  # Live trading with Binance
         broker_config = {
+            # 'apiKey': FTX.get("key"),
+            # 'secret': FTX.get("secret"),
             # 'apiKey': KRAKEN.get("key"),
             # 'secret': KRAKEN.get("secret"),
             # 'apiKey': BITFINEX.get("key"),
             # 'secret': BITFINEX.get("secret"),
             'apiKey': BINANCE.get("key"),
             'secret': BINANCE.get("secret"),
-            # 'nonce': lambda: str(int(time.time() * 1000)),
             'nonce': lambda: str(int(time.time() * 1000)),
             'enableRateLimit': True,
+            # 'verbose': True,
         }
 
         store = CCXTStore(
             exchange='binanceusdm', 
-            # exchange='bitfinex', 
+            # exchange='bitfinex2', 
             # exchange='kraken', 
+            # exchange='ftx', 
+            # Must have that currency available in order to trade it
             currency=COIN_REFER, 
+            #BitFinex. Might need to pull and edit to get the correct currency using fetchBalance(margin)
+            # currency='TESTUSDT', 
             config=broker_config, 
             retries=5, 
             debug=DEBUG,
+            # For Bitfinex
+            # balance_type='derivatives',
             sandbox=SANDBOX
         )
 
-        symbol = 'BTC/USDT'
+        # print("exchange methods")
+        # pprint(dir(store.exchange))
+
+        symbol = f'{COIN_TARGET}/{COIN_REFER}'
+        # symbol = 'BTC-PERP'
         market = store.exchange.market(symbol)
-        # print(store.exchange.markets[symbol])
+        # pprint(store.exchange.markets[symbol])
+
+        # balance = store.exchange.fetch_balance({'type': 'margin'})
+        # pprint(balance)
 
         dual_response = store.exchange.fapiPrivate_get_positionside_dual()
         if dual_response['dualSidePosition']:
@@ -54,13 +70,14 @@ def main():
         else:
             print('You are in One-way Mode')
         
-        # Set leverage multiplier
-        type_response = store.exchange.fapiPrivatePostMarginType ({
-            'symbol': market['id'],
-            'marginType': 'ISOLATED',
-        })
-        print(type_response)
+        # Set margin type
+        # type_response = store.exchange.fapiPrivate_post_margintype ({
+        #     'symbol': market['id'],
+        #     'marginType': 'ISOLATED',
+        # })
+        # print(type_response)
 
+        # Set leverage multiplier
         leverage_response = store.exchange.fapiPrivate_post_leverage({
             'symbol': market['id'],
             'leverage': leverage,
@@ -73,6 +90,10 @@ def main():
                 bt.Order.Market: 'market',
                 bt.Order.Limit: 'limit',
                 bt.Order.StopLimit: 'stop_market'
+                # Bitfinex
+                # bt.Order.Market: 'MARKET',
+                # bt.Order.Limit: 'LIMIT',
+                # bt.Order.StopLimit: 'STOP LIMIT'
             },
             'mappings': {
                 'closed_order': {
@@ -97,9 +118,9 @@ def main():
             timeframe=bt.TimeFrame.Minutes,
             fromdate=hist_start_date,
             # compression=60,
-            compression=1,
+            # compression=1,
             # Max number of ticks before throttling occurs
-            ohlcv_limit=1000,
+            ohlcv_limit=999,
             # Prevents loading partial data from incomplete candles
             # drop_newest=True
         )
@@ -132,11 +153,7 @@ def main():
 
     cashperc = 50
 
-    # cerebro.addsizer(bt.sizers.PercentSizer, percents=cashperc)
-    # cerebro.addsizer(bt.sizers.SizerFix, stake=0.001)
-
     # Analyzers to evaluate trades and strategies
-    # SQN = Average( profit / risk ) / StdDev( profit / risk ) x SquareRoot( number of trades )
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
@@ -157,7 +174,7 @@ def main():
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()
     print('Starting Portfolio Value: %.2f' % initial_value)
-    send_telegram_message("Chart Sniper initialized")
+    send_telegram_message("===== Chart Sniper initialized =====")
     result = cerebro.run()
 
     # Print analyzers - results

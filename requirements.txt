@@ -2,7 +2,7 @@ python-dotenv
 python-telegram-bot
 backtrader
 ccxt
-git+https://github.com/Dave-Vallance/bt-ccxt-store.git
+git+https://github.com/wilfredbtan/bt-ccxt-store.git
 xlsxwriter
 pandas
 termcolor

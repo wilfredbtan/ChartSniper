@@ -10,11 +10,14 @@ COIN_TARGET = "BTC"
 COIN_REFER = "USDT"
 
 SANDBOX = True
-ENV = os.getenv("ENVIRONMENT", DEVELOPMENT)
+ENV = os.getenv("ENVIRONMENT", PRODUCTION)
 DEBUG = True
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
+'''
+BINANCE
+'''
 # PROD_BINANCE_API_KEY=os.environ.get("PROD_BINANCE_API_KEY")
 # PROD_BINANCE_SECRET=os.environ.get("PROD_BINANCE_SECRET")
 
@@ -32,9 +35,14 @@ BINANCE = {
 }
 
 
-# BITFINEX
+'''
+BITFINEX
+'''
 # COIN_TARGET = "TESTBTC"
-# COIN_REFER = "TESTUSD"
+# COIN_REFER = "TESTUSDT"
+
+# COIN_TARGET = "TESTBTCF0"
+# COIN_REFER = "TESTUSDTF0"
 
 # TEST_BITFINEX_API_KEY=os.environ.get("TEST_BITFINEX_API_KEY")
 # TEST_BITFINEX_SECRET=os.environ.get("TEST_BITFINEX_SECRET")
@@ -44,20 +52,26 @@ BINANCE = {
 #   "secret": TEST_BITFINEX_SECRET
 # }
 
+'''
+KRAKEN
+'''
 # COIN_TARGET = "BTC"
 # COIN_REFER = "USDT"
 
 # TEST_KRAKEN_API_KEY=os.environ.get("TEST_KRAKEN_API_KEY")
 # TEST_KRAKEN_SECRET=os.environ.get("TEST_KRAKEN_SECRET")
 
-# signature = hmac.new(base64.b64decode(TEST_KRAKEN_SECRET), hashlib.sha512)
-# sigdigest = base64.b64encode(signature.digest())
-# sigdigest = base64.b64encode(TEST_KRAKEN_SECRET)
-
 # KRAKEN = {
 #   "key": TEST_KRAKEN_API_KEY,
 #   "secret": TEST_KRAKEN_SECRET
-#   # "secret": sigdigest
+# }
+
+# TEST_FTX_API_KEY=os.environ.get("TEST_FTX_API_KEY")
+# TEST_FTX_SECRET=os.environ.get("TEST_FTX_SECRET")
+
+# FTX = {
+#   "key": TEST_FTX_API_KEY,
+#   "secret": TEST_FTX_SECRET
 # }
 
 TELEGRAM = {

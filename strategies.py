@@ -45,7 +45,7 @@ class StrategyBase(bt.Strategy):
     def notify_data(self, data, status, *args, **kwargs):
         self.status = data._getstatusname(status)
         print("STATUS: ", self.status)
-        if status == data.LIVE:
+        if status == "LIVE":
             self.log("LIVE DATA - Ready to trade")
         
     def notify_order(self, order):
@@ -59,10 +59,11 @@ class StrategyBase(bt.Strategy):
         # pprint(l)
         # print("order info")
         # pprint(order.info)
-        # print("order info name")
-        # pprint(order.info.name)
-        # print("ccxt_order")
-        # pprint(order.ccxt_order)
+        print("order info name")
+        pprint(order.info.name)
+        print("ccxt_order")
+        pprint(order.ccxt_order)
+
         close = self.dataclose[0]
 
         if order.status in [order.Submitted, order.Accepted]:
@@ -79,7 +80,6 @@ class StrategyBase(bt.Strategy):
                 del self.stop_orders[order.ref]
 
             if ENV == PRODUCTION:
-                # Access ccxt order
                 datetime_int = int(order.ccxt_order["timestamp"])
                 datetime_int = datetime_int/1000 if datetime_int > 10000000000 else datetime_int
                 datetime_str = get_formatted_datetime(datetime_int, format='%d %b %Y %H:%M:%S')
@@ -94,7 +94,10 @@ class StrategyBase(bt.Strategy):
                 else:
                     self.logged_order_ids.add(order_id)
                 
-                if order.ccxt_order["info"]["status"] == 'FILLED':
+                # BINANCE
+                # if order.ccxt_order["info"]["status"] == 'FILLED':
+                # BITFINEX
+                if order.ccxt_order["filled"] == order.ccxt_order['amount']:
                     if order.isbuy():
                         self.log(
                             'BUY EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Date: %s' %
@@ -163,10 +166,10 @@ class StrategyBase(bt.Strategy):
             self.log_trade()
 
 
-    def notify_trade(self, trade):
-        if not trade.isclosed:
-            return
-        self.log_profit(trade.pnl, trade.pnlcomm)
+    # def notify_trade(self, trade):
+    #     if not trade.isclosed:
+    #         return
+    #     self.log_profit(trade.pnl, trade.pnlcomm)
 
     def close_and_cancel_stops(self):
         # self.log("close broker cash")
@@ -239,9 +242,9 @@ class StrategyBase(bt.Strategy):
         return lp
 
 
-    def sell_stop_loss(self, close, multiplier=1):
+    def sell_stop_loss(self, close, size=None, multiplier=1):
         self.log(f"=== sell cerebro value {self.broker.getvalue()}")
-        size = self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
+        size = size if size else self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
         self.log(f"=== sell size, {size}")
 
         # Binance minimum order size is 0.0001
@@ -264,7 +267,7 @@ class StrategyBase(bt.Strategy):
         # if is_liquidable:
         #     txt = colored(f"===== STOP SHORT Liquidation price {lp_with_buffer} used instead of {stop_price}", 'cyan')
         #     print(txt)
-        stop_price = min(stop_price, lp_with_buffer)
+        # stop_price = min(stop_price, lp_with_buffer)
 
         stop_order = self.buy(
             exectype=bt.Order.StopLimit, 
@@ -279,9 +282,9 @@ class StrategyBase(bt.Strategy):
         stop_order.addinfo(is_liquidable=is_liquidable)
         self.stop_orders[stop_order.ref] = stop_order
         
-    def buy_stop_loss(self, close, multiplier=1):
+    def buy_stop_loss(self, close, size=None, multiplier=1):
         self.log(f"=== buy cerebro value {self.broker.getvalue()}")
-        size = self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
+        size = size if size else self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
         # size = self.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close
         self.log(f"=== buy size, {size}")
         # Binance minimum order size
@@ -305,7 +308,7 @@ class StrategyBase(bt.Strategy):
         # if is_liquidable:
         #     txt = colored(f"===== STOP LONG Liquidation price {lp_with_buffer} used instead of {stop_price}", 'cyan')
         #     print(txt)
-        stop_price = max(stop_price, lp_with_buffer)
+        # stop_price = max(stop_price, lp_with_buffer)
 
         stop_order = self.sell(
             exectype=bt.Order.StopLimit,
@@ -397,7 +400,6 @@ class TESTBUY(StrategyBase):
 
         self.bought_once = False
         self.sold_once = False
-        print("cash perc in test", self.p.cashperc)
 
         # if SANDBOX != True:
         #     print("Using a test strategy in production")
@@ -461,30 +463,37 @@ class TESTBUY(StrategyBase):
         # print("self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband)
         # print("")
     
-        if self.position.size < 0 and not self.bought_once:
-            print("buy")
-            # self.buy(exectype=bt.Order.Limit, price=30000)
-            self.close_and_cancel_stops()
-            # self.buy()
-            self.buy_stop_loss(close)
-            self.bought_once = True
+        # if self.position.size < 0 and not self.bought_once:
+        #     print("buy")
+        #     # self.buy(exectype=bt.Order.Limit, price=30000)
+        #     self.close_and_cancel_stops()
+        #     self.buy_stop_loss(close, size=0.1)
+        #     # self.buy()
+        #     # Bitfinex derivative market buy
+        #     # self.buy(type='MARKET', lev=self.p.leverage, size=0.1)
+        #     self.bought_once = True
 
-        if self.position.size > 0 and not self.sold_once:
-            print("sell")
-            # self.sell(exectype=bt.Order.Limit, price=60000)
-            self.close_and_cancel_stops()
-            # # self.sell()
-            self.sell_stop_loss(close)
-            self.sold_once = True
+        # if self.position.size > 0 and not self.sold_once:
+        #     print("sell")
+        #     # self.sell(exectype=bt.Order.Limit, price=60000)
+        #     self.close_and_cancel_stops()
+        #     self.sell_stop_loss(close, size=0.1)
+        #     # self.sell()
+        #     # Bitfinex derivative market buy
+        #     # self.sell(type='MARKET', lev=self.p.leverage, size=0.1)
+        #     self.sold_once = True
 
-        if self.position.size == 0:
-            print("SHOULD BUY")
-            self.close_and_cancel_stops()
-            # self.log('BUY CREATE, %.2f' % self.dataclose[0])
-            self.buy_stop_loss(close)
+        # if self.position.size == 0:
+        #     print("SHOULD BUY")
+        #     self.close_and_cancel_stops()
+        #     self.buy_stop_loss(close, size=0.1)
+        #     # self.buy()
+        #     # Bitfinex derivative market buy
+        #     # self.buy(type='MARKET', lev=self.p.leverage, size=0.1)
+        #     # self.log('BUY CREATE, %.2f' % self.dataclose[0])
 
-        if self.position.size != 0 and self.bought_once and self.sold_once:
-            self.close_and_cancel_stops()
+        # if self.position.size != 0 and self.bought_once and self.sold_once:
+        #     self.close_and_cancel_stops()
 
 
 class StochMACD(StrategyBase):
@@ -570,7 +579,7 @@ class StochMACD(StrategyBase):
 
 
         # self.mfi = MFI(self.datas[1], period=self.p.stoch_rsi_period)
-        # self.cmf = CMF(self.datas[1], period=self.p.cmf_period)
+        self.cmf = CMF(self.datas[1], period=self.p.cmf_period)
 
     def get_params_for_time(self):
         dd = self.datas[0].datetime.date(0)
@@ -708,13 +717,15 @@ class StochMACD(StrategyBase):
 
         # cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband or self.cmf[-1] < self.p.cmf_lowerband
         # cmf_should_sell = self.cmf[0] > self.p.cmf_upperband or self.cmf[-1] < self.p.cmf_upperband
-        # cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband 
-        # cmf_should_sell = self.cmf[0] > self.p.cmf_upperband
+        # cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband / 100
+        # cmf_should_sell = self.cmf[0] > self.p.cmf_upperband / 100
+        cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband
+        cmf_should_sell = self.cmf[0] > self.p.cmf_upperband
 
         should_buy = (
             (self.mcross[0] > 0 or self.mcross[-1] > 0) and
             rsi_should_buy and
-            # cmf_should_buy and
+            cmf_should_buy and
             # mfi_should_buy and
             did_stochrsi_crossup
         )
@@ -722,7 +733,7 @@ class StochMACD(StrategyBase):
         should_sell = (
             (self.mcross[0] < 0 or self.mcross[-1] < 0) and
             rsi_should_sell and
-            # cmf_should_sell and
+            cmf_should_sell and
             # mfi_should_sell and
             did_stochrsi_crossdown
         )

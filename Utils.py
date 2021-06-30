@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime
 from config import ENV
-from Telegram import Telegram_Bot
+from telegram_bot import bot
 
 
 def get_formatted_datetime(unix, format='%Y-%m-%d %H:%M:%S'):
@@ -64,14 +64,12 @@ def print_sqn(analyzer):
     print('SQN: {}'.format(sqn))
 
 
-bot = Telegram_Bot()
+print("run utils bot")
+if not bot.is_running:
+    print("BOT IS NOT RUNNING")
+    bot.run()
+
 def send_telegram_message(message=""):
     if ENV != "production":
         return
-
     bot.send_message(message)
-    # base_url = "https://api.telegram.org/bot%s" % TELEGRAM.get("bot")
-    # return requests.get("%s/sendMessage" % base_url, params={
-    #     'chat_id': TELEGRAM.get("channel"),
-    #     'text': message
-    # })

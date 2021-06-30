@@ -23,8 +23,8 @@ macd = '--macd1 9 --macd2 21 --macdsig 8' # Does even better when shorts are div
 
 atrdist = '--atrdist 5'
 # atrdist = '--atrdist 3'
-# atrdist = '--atrdist 13'
 
+# atrdist = '--atrdist 13'
 # leverage = '--leverage 1'
 # leverage = '--leverage 3'
 # leverage = '--leverage 4'
@@ -92,6 +92,18 @@ print("===== Multiple Runs =====")
 os.system(f'python3 multiple_runs.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
+### CMF 
+cmf_upperband=range(2,9),
+cmf_lowerband=range(-20,-9),
+
+===== All =====
+[1.2110214162475912, 1234429.67, 3, -10]
+[1.2110214162475912, 1234429.67, 4, -10]
+[1.2110214162475912, 1234429.67, 5, -10]
+[1.2094826850703917, 420985.07, 7, -10]
+[1.207309551765614, 682685.78, 3, -13]
+
+
 With extra multiplier
 +++++ Final Result +++++
 Avg SQN:  0.80
