@@ -1,7 +1,12 @@
-from pprint import pprint
+import logging
+import sys
+import signal
 import time
 import datetime as dt
+from typing import final
 import backtrader as bt
+
+from pprint import pprint
 
 from ccxtbt import CCXTStore, CCXTFeed
 from config import BINANCE, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
@@ -9,7 +14,7 @@ from config import BINANCE, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, D
 # from config import KRAKEN, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 # from config import FTX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 
-from utils import print_trade_analysis, print_sqn, send_telegram_message 
+from utils import get_trade_analysis, get_sqn, send_telegram_message 
 
 from strategies import StochMACD, TESTBUY
 from Parser import parse_args
@@ -47,7 +52,7 @@ def main():
             # currency='TESTUSDT', 
             config=broker_config, 
             retries=5, 
-            debug=DEBUG,
+            # debug=DEBUG,
             # For Bitfinex
             # balance_type='derivatives',
             sandbox=SANDBOX
@@ -158,14 +163,20 @@ def main():
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
     # Include Strategy
-    # cerebro.addstrategy(StochMACD,
-    #                     macd1=9,
-    #                     macd2=21,
-    #                     macdsig=8,
-    #                     atrdist=5,
-    #                     reversal_sensitivity=18,
-    #                     cashperc=cashperc,
-    #                     leverage=leverage)
+    # cerebro.addstrategy(
+    #     StochMACD,
+    #     macd1=9,
+    #     macd2=21,
+    #     macdsig=8,
+    #     atrdist=5,
+    #     reversal_sensitivity=17,
+    #     rsi_upperband=45,
+    #     rsi_lowerband=49,
+    #     reversal_lowerband=43,
+    #     reversal_upperband=48,
+    #     cashperc=cashperc,
+    #     leverage=leverage
+    # )
 
     cerebro.addstrategy(TESTBUY,
                         cashperc=cashperc,
@@ -179,22 +190,30 @@ def main():
 
     # Print analyzers - results
     final_value = cerebro.broker.getvalue()
-    print('Final Portfolio Value: %.2f' % final_value)
-    print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
-    print_trade_analysis(result[0].analyzers.ta.get_analysis())
-    print_sqn(result[0].analyzers.sqn.get_analysis())
+    final_value_string = 'Final Portfolio Value: %.2f' % final_value
+    profit_string = 'Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100)
+    ta_string = get_trade_analysis(result[0].analyzers.ta.get_analysis())
+    sqn_string = get_sqn(result[0].analyzers.sqn.get_analysis())
+
+    logging.warning(final_value_string)
+    logging.warning(profit_string)
+    logging.warning(ta_string)
+    logging.warning(sqn_string)
+
+    if ENV == PRODUCTION:
+        telegram_txt = f'{final_value}\n{profit_string}\n{ta_string}\n{sqn_string}'
+        datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
+        print("Chart Sniper finished by user on %s" % datetime_str)
+        send_telegram_message(telegram_txt)
+        send_telegram_message("Bot finished by user on %s" % datetime_str)
+
 
     # if DEBUG:
     #     cerebro.plot()
 
-
 if __name__ == "__main__":
     try:
         main()
-    except KeyboardInterrupt:
-        datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
-        print("Chart Sniper finished by user on %s" % datetime_str)
-        send_telegram_message("Bot finished by user on %s" % datetime_str)
     except Exception as err:
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
         send_telegram_message("Bot finished with error: %s on %s" % (err, datetime_str))

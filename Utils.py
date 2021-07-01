@@ -1,8 +1,8 @@
+import requests
 import pandas as pd
 from datetime import datetime
-from config import ENV
-from telegram_bot import bot
-
+from config import ENV, PRODUCTION, TELEGRAM
+from telegram_bot import Telegram_Bot
 
 def get_formatted_datetime(unix, format='%Y-%m-%d %H:%M:%S'):
     return datetime.utcfromtimestamp(unix).strftime(format)
@@ -25,10 +25,10 @@ def reverse_and_clean(input_name, output_name):
 
 # reverse_and_clean(input_name='./crypto/Binance_BTCUSDT_minute.csv', output_name='./crypto/reversed_BTC_minute.csv')
 
-def print_trade_analysis(analyzer):
+def get_trade_analysis(analyzer):
     # Get the results we are interested in
-    if not analyzer.get("total"):
-        return
+    if not analyzer.get("total") or analyzer['total']['total'] == 0:
+        return "No trades"
 
     total_open = analyzer.total.open
     total_closed = analyzer.total.closed
@@ -54,22 +54,28 @@ def print_trade_analysis(analyzer):
     # Print the rows
     print_list = [h1, r1, h2, r2]
     row_format = "{:<15}" * (header_length + 1)
-    print("Trade Analysis Results:")
+    txt = "Trade Analysis Results:"
     for row in print_list:
-        print(row_format.format('', *row))
+        txt += '\n' + row_format.format('', *row)
+    return txt
 
 
-def print_sqn(analyzer):
+def get_sqn(analyzer):
     sqn = round(analyzer.sqn, 2)
-    print('SQN: {}'.format(sqn))
+    return 'SQN: {}'.format(sqn)
 
-
-print("run utils bot")
-if not bot.is_running:
-    print("BOT IS NOT RUNNING")
-    bot.run()
 
 def send_telegram_message(message=""):
     if ENV != "production":
         return
-    bot.send_message(message)
+    base_url = "https://api.telegram.org/bot%s" % TELEGRAM.get("bot")
+    return requests.get("%s/sendMessage" % base_url, params={
+        'chat_id': TELEGRAM.get("chat_id"),
+        'text': message
+    })
+
+if ENV == PRODUCTION:
+    response = send_telegram_message("== Initializing utils ==")
+    if not response.json()['ok']:
+        bot = Telegram_Bot()
+        bot.run()

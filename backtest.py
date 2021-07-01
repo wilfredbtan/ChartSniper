@@ -6,7 +6,7 @@ from Commissions import CommInfo_Futures_Perc_Mult
 from Parser import parse_args
 from Datasets import *
 from strategies import StochMACD, WfaStochMACD
-from utils import print_sqn, print_trade_analysis
+from utils import get_sqn, get_trade_analysis
 
 def runstrat(args=None):
     args = parse_args(args)
@@ -176,8 +176,8 @@ def runstrat(args=None):
         final_value = cerebro.broker.getvalue()
         print('Final Portfolio Value: %.2f' % final_value)
         print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
-        print_trade_analysis(result[0].analyzers.ta.get_analysis())
-        print_sqn(result[0].analyzers.sqn.get_analysis())
+        get_trade_analysis(result[0].analyzers.ta.get_analysis())
+        get_sqn(result[0].analyzers.sqn.get_analysis())
 
         sqn = result[0].analyzers.sqn.get_analysis()
         PnL = round(result[0].broker.get_value() - args.cash, 2)

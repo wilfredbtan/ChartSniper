@@ -1,16 +1,19 @@
+import signal
+import sys
 import collections
 import bisect
 import time
-from datetime import timezone
+import logging
+
+import backtrader as bt
+from datetime import datetime, timezone
 from pprint import pprint
 from backtrader import position
 from backtrader.dataseries import TimeFrame
 from termcolor import colored
-import logging
-import backtrader as bt
 from Indicators import StochasticRSI, MACD, MFI, CMF
 from config import PRODUCTION, SANDBOX, ENV
-from utils import send_telegram_message, get_formatted_datetime
+from utils import send_telegram_message, get_formatted_datetime, get_trade_analysis
 
 class StrategyBase(bt.Strategy):
 
@@ -21,7 +24,11 @@ class StrategyBase(bt.Strategy):
         ('isWfa', False)
     )
 
+    def handleInterrupt(self, sig, frame):
+        self.env.runstop()
+
     def __init__(self):
+        signal.signal(signal.SIGINT, self.handleInterrupt)
         self.order = None
         self.status = "DISCONNECTED"
         self.last_buy_price = None
@@ -59,10 +66,11 @@ class StrategyBase(bt.Strategy):
         # pprint(l)
         # print("order info")
         # pprint(order.info)
-        print("order info name")
-        pprint(order.info.name)
-        print("ccxt_order")
-        pprint(order.ccxt_order)
+
+        # print("order info name")
+        # pprint(order.info.name)
+        # print("ccxt_order")
+        # pprint(order.ccxt_order)
 
         close = self.dataclose[0]
 
@@ -447,21 +455,21 @@ class TESTBUY(StrategyBase):
             return
 
         print("LIVE NEXT")
-        # print("Should buy:")
-        # print("self.mcross[0] > 0.0", self.mcross[0] > 0.0)
-        # print("self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-3] < self.p.stoch_lowerband)
-        # print("self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-2] < self.p.stoch_lowerband)
-        # print("self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband", self.stochrsi.l.fastk[-1] < self.p.stoch_lowerband)
-        # print("self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] >= self.p.stoch_lowerband)
-        # print("")
 
-        # print("Should sell:")
-        # print("self.mcross[0] < 0.0", self.mcross[0] < 0.0)
-        # print("self.stochrsi.l.fastk[-3] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-3] > self.p.stoch_lowerband)
-        # print("self.stochrsi.l.fastk[-2] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-2] > self.p.stoch_lowerband)
-        # print("self.stochrsi.l.fastk[-1] > self.p.stoch_lowerband", self.stochrsi.l.fastk[-1] > self.p.stoch_lowerband)
-        # print("self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband", self.stochrsi.l.fastk[0] <= self.p.stoch_lowerband)
-        # print("")
+        if self.position.size < 0:
+            print("buy")
+            self.close_and_cancel_stops()
+            self.buy_stop_loss(close, size=0.1)
+
+        if self.position.size > 0:
+            print("sell")
+            self.close_and_cancel_stops()
+            self.sell_stop_loss(close, size=0.1)
+
+        if self.position.size == 0:
+            print("SHOULD BUY")
+            self.buy_stop_loss(close, size=0.1)
+
     
         # if self.position.size < 0 and not self.bought_once:
         #     print("buy")
@@ -579,7 +587,7 @@ class StochMACD(StrategyBase):
 
 
         # self.mfi = MFI(self.datas[1], period=self.p.stoch_rsi_period)
-        self.cmf = CMF(self.datas[1], period=self.p.cmf_period)
+        # self.cmf = CMF(self.datas[1], period=self.p.cmf_period)
 
     def get_params_for_time(self):
         dd = self.datas[0].datetime.date(0)
@@ -619,7 +627,7 @@ class StochMACD(StrategyBase):
         # dt1 = self.datas[1].datetime.datetime()
         # print("d1", dt1)
 
-        # print("d0 OHLC: ", self.datas[0].datetime.datetime(), self.datas[0].open[0], self.datas[0].high[0], self.datas[0].low[0], self.datas[0].close[0])
+        print("d0 OHLC: ", self.datas[0].datetime.datetime(), self.datas[0].open[0], self.datas[0].high[0], self.datas[0].low[0], self.datas[0].close[0])
         # print("d1 OHLC: ", self.datas[1].datetime.datetime(), self.datas[1].open[0], self.datas[1].high[0], self.datas[1].low[0], self.datas[1].close[0])
         # print("")
 
@@ -719,13 +727,14 @@ class StochMACD(StrategyBase):
         # cmf_should_sell = self.cmf[0] > self.p.cmf_upperband or self.cmf[-1] < self.p.cmf_upperband
         # cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband / 100
         # cmf_should_sell = self.cmf[0] > self.p.cmf_upperband / 100
-        cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband
-        cmf_should_sell = self.cmf[0] > self.p.cmf_upperband
+
+        # cmf_should_buy = self.cmf[0] < self.p.cmf_lowerband
+        # cmf_should_sell = self.cmf[0] > self.p.cmf_upperband
 
         should_buy = (
             (self.mcross[0] > 0 or self.mcross[-1] > 0) and
             rsi_should_buy and
-            cmf_should_buy and
+            # cmf_should_buy and
             # mfi_should_buy and
             did_stochrsi_crossup
         )
@@ -733,7 +742,7 @@ class StochMACD(StrategyBase):
         should_sell = (
             (self.mcross[0] < 0 or self.mcross[-1] < 0) and
             rsi_should_sell and
-            cmf_should_sell and
+            # cmf_should_sell and
             # mfi_should_sell and
             did_stochrsi_crossdown
         )
