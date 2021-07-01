@@ -23,6 +23,7 @@ from Datasets import *
 def main():
     cerebro = bt.Cerebro(quicknotify=True)
     # cerebro = bt.Cerebro()
+    cerebro.broker.set_shortcash(False)
 
     leverage = 5
 
@@ -52,7 +53,7 @@ def main():
             # currency='TESTUSDT', 
             config=broker_config, 
             retries=5, 
-            # debug=DEBUG,
+            debug=DEBUG,
             # For Bitfinex
             # balance_type='derivatives',
             sandbox=SANDBOX
@@ -89,6 +90,15 @@ def main():
         })
 
         pprint(leverage_response)
+
+        #Test get trades
+
+        # print("GET Trades")
+        # trades_response = store.exchange.fapiPrivate_get_usertrades ({
+        #     'symbol': market['id'],
+        #     'limit': 10,
+        # })
+        # pprint(trades_response)
 
         broker_mapping = {
             'order_types': {
