@@ -27,6 +27,8 @@ def main():
 
     leverage = 5
 
+    cerebro.broker.setcommission(commission=0.00015, leverage=leverage)
+
     if ENV == PRODUCTION:  # Live trading with Binance
         broker_config = {
             # 'apiKey': FTX.get("key"),
@@ -211,7 +213,7 @@ def main():
     logging.warning(sqn_string)
 
     if ENV == PRODUCTION:
-        telegram_txt = f'{final_value}\n{profit_string}\n{ta_string}\n{sqn_string}'
+        telegram_txt = f'{final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string}'
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
         print("Chart Sniper finished by user on %s" % datetime_str)
         send_telegram_message(telegram_txt)
