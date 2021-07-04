@@ -1,24 +1,20 @@
 import signal
-import sys
 import collections
 import bisect
 import time
 import logging
 
 import backtrader as bt
-from datetime import datetime, timezone
+from datetime import timezone
 from pprint import pprint
-from backtrader import position
-from backtrader.dataseries import TimeFrame
 from termcolor import colored
 from Indicators import StochasticRSI, MACD, MFI, CMF
 from config import PRODUCTION, SANDBOX, ENV
-from utils import send_telegram_message, get_formatted_datetime, get_trade_analysis
+from utils import send_telegram_message, get_formatted_datetime
 
 class StrategyBase(bt.Strategy):
 
     params = (
-        ("cashperc", 50),
         ("leverage", 5),
         ('loglevel', logging.WARNING),
         ('isWfa', False)
@@ -31,12 +27,13 @@ class StrategyBase(bt.Strategy):
         signal.signal(signal.SIGINT, self.handleInterrupt)
         self.order = None
         self.status = "DISCONNECTED"
-        self.last_buy_price = None
-        self.last_sell_price = None
-        self.logged_order_ids = set()
+        # self.logged_order_ids = set()
         self.stop_orders = {}
 
-        # Retrieved on 25 Jun 2021 from https://www.binance.com/en/support/faq/360033162192 and https://www.binance.com/en/support/faq/360033162192
+        self.last_buy_price = None
+        self.last_sell_price = None
+
+        # Retrieved on 25 Jun 2021 from https://www.binance.com/en/support/faq/b3c689c1f50a44cabb3a84e663b81d93 and https://www.binance.com/en/support/faq/360033162192
         self.tier_dict = collections.OrderedDict()
         self.tier_dict[50000] = (0.004, 0)
         self.tier_dict[250000] = (0.005, 50)
@@ -95,12 +92,14 @@ class StrategyBase(bt.Strategy):
                 order_id = order.ccxt_order["id"]
                 order_cost = order.ccxt_order["cost"]
 
-                print("order ids: ", self.logged_order_ids)
-                if order_id in self.logged_order_ids:
-                    self.logged_order_ids.remove(order_id)
-                    return
-                else:
-                    self.logged_order_ids.add(order_id)
+                # print("order ids: ", self.logged_order_ids)
+                # if order_id in self.logged_order_ids:
+                #     print("remove id: ", order_id)
+                #     self.logged_order_ids.remove(order_id)
+                #     return
+                # else:
+                #     print("add id: ", order_id)
+                #     self.logged_order_ids.add(order_id)
                 
                 # BINANCE
                 # if order.ccxt_order["info"]["status"] == 'FILLED':
@@ -117,12 +116,15 @@ class StrategyBase(bt.Strategy):
                             level=logging.INFO,
                             send_telegram=True)
                             # No commission (fee) data available as at 12 June 2021
+                        print("BUY order id: ", order_id)
                         if order_name == "CLOSE":
                             pnl = self.last_sell_price - order_cost  
+                            print("===== NOTIFY_ORDER pnl")
                             self.log_profit(pnl)
                             # print("buy close broker cash")
                             # print("cerebro cash", self.broker.cash)
                         else:
+                            print("last_buy_price", order_cost)
                             self.last_buy_price = order_cost
                     else:
                         self.log(
@@ -135,36 +137,39 @@ class StrategyBase(bt.Strategy):
                             level=logging.INFO,
                             send_telegram=True)
                             # No commission (fee) data available as at 12 June 2021
+                        print("SELL order id: ", order_id)
                         if order_name == "CLOSE":
-                            pnl = self.last_buy_price - order_cost  
+                            pnl = order_cost - self.last_buy_price
+                            print("===== NOTIFY_ORDER pnl")
                             self.log_profit(pnl)
                             # print("sell close broker cash")
                             # print("cerebro cash", self.broker.cash)
                         else:
+                            print("last_sell_price", order_cost)
                             self.last_sell_price = order_cost 
             else:
                 if order.isbuy():
-                    self.log(
-                        'BUY EXECUTED: %s, Amount: %.2f, Price: %.4f, Cost: %.4f, Comm %.2f' %
-                        (order_name,
-                        order.executed.size,
-                        order.executed.price,
-                        order.executed.value,
-                        order.executed.comm), 
-                        level=logging.INFO)
+                    self.log('BUY EXECUTED: %s, Amount: %.2f, Price: %.4f, Cost: %.4f, Comm %.2f' %
+                             (order_name,
+                              order.executed.size,
+                              order.executed.price,
+                              order.executed.value,
+                              order.executed.comm),
+                             level=logging.INFO)
                 else:  # Sell
                     self.log('SELL EXECUTED: %s, Amount: %.2f, Price: %.5f, Cost: %.5f, Comm %.5f' %
-                            (order_name,
-                            order.executed.size,
-                            order.executed.price,
-                            order.executed.value,
-                            order.executed.comm),
-                            level=logging.INFO)
+                             (order_name,
+                              order.executed.size,
+                              order.executed.price,
+                              order.executed.value,
+                              order.executed.comm),
+                             level=logging.INFO)
                 
             self.log_trade()
 
         elif order.status in [order.Canceled]:
             self.log('Order Canceled: %s' % order_name, level=logging.INFO, send_telegram=True)
+            # print("Cancel order id: ", order.ccxt_order['id'])
             self.log_trade()
         elif order.status in [order.Margin]:
             self.log('Order Margin: %s' % order_name, level=logging.INFO, send_telegram=True)
@@ -174,25 +179,12 @@ class StrategyBase(bt.Strategy):
             self.log_trade()
 
 
-    # def notify_trade(self, trade):
-    #     if not trade.isclosed:
-    #         return
-    #     self.log_profit(trade.pnl, trade.pnlcomm)
-
-    def close_and_cancel_stops(self):
-        # self.log("close broker cash")
-        # self.log(f"close cerebro cash {self.broker.cash}")
-        close_order = self.close()
-        if close_order:
-            close_order.addinfo(name="CLOSE")
-        if len(self.stop_orders) > 0:
-            # if len(self.stop_orders) > 1:
-            #     print("NO")
-            for oref in self.stop_orders.keys():
-                # print("-- remove ref: ", oref)
-                self.cancel(self.stop_orders[oref])
-            # print("Number of stop orders: ", len(self.stop_orders))
-            self.stop_orders = {}
+    def notify_trade(self, trade):
+        if not trade.isclosed:
+            return
+        print("===== NOTIFY_TRADE pnl")
+        print("notify_trade comminfo", self.broker.p.commission.p.__dict__)
+        self.log_profit(trade.pnl, trade.pnlcomm)
 
     def get_maintenance_margin_rate_and_amt(self, notional_value):
         '''
@@ -223,7 +215,7 @@ class StrategyBase(bt.Strategy):
         # Direction of BOTH position, 1 as long position, -1 as short position
         side_BOTH = side
         # Absolute value of BOTH position size (one-way mode)
-        pos_BOTH = pos_size
+        pos_BOTH = abs(pos_size)
         # Entry price of BOTH position size (one-way mode)
         ep_BOTH = entry_price
         # Absolute value of LONG position size (hedge mode)
@@ -249,33 +241,31 @@ class StrategyBase(bt.Strategy):
 
         return lp
 
+    def close_and_cancel_stops(self):
+        close_order = self.close()
+        if close_order:
+            close_order.addinfo(name="CLOSE")
+        if len(self.stop_orders) > 0:
+            if len(self.stop_orders) > 1:
+                print(self.stop_orders)
+            for oref in self.stop_orders.keys():
+                print("-- remove ref: ", oref)
+                self.cancel(self.stop_orders[oref])
+            # print("Number of stop orders: ", len(self.stop_orders))
+            self.stop_orders = {}
 
-    def sell_stop_loss(self, close, size=None, multiplier=1):
-        self.log(f"=== sell cerebro value {self.broker.getvalue()}")
-        size = size if size else self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
-        self.log(f"=== sell size, {size}")
-
-        # Binance minimum order size is 0.0001
-        size = max(size * multiplier, 0.0001)
-
-        sell_order = self.sell(
-            size=size, 
-            transmit=False, 
-        )
+    def sell_stop_loss(self, close, multiplier=1):
+        # sell_order = self.sell(price=close, exectype=bt.Order.Limit, transmit=False)
+        sell_order = self.sell(transmit=False)
         sell_order.addinfo(name="ENTRY SHORT Order")
 
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
         stop_price = close + atrdist * self.atr[0]
 
-        lp = self.get_liquidation_price(side=-1, pos_size=size, entry_price=close)
+        lp = self.get_liquidation_price(side=-1, pos_size=sell_order.size, entry_price=close)
         lp_with_buffer = lp - self.atr[0] * 0.5
-        # lp_with_buffer = lp - 100
-        # lp_with_buffer = lp
         is_liquidable = lp_with_buffer < stop_price
-        # if is_liquidable:
-        #     txt = colored(f"===== STOP SHORT Liquidation price {lp_with_buffer} used instead of {stop_price}", 'cyan')
-        #     print(txt)
-        # stop_price = min(stop_price, lp_with_buffer)
+        stop_price = min(stop_price, lp_with_buffer)
 
         stop_order = self.buy(
             exectype=bt.Order.StopLimit, 
@@ -290,33 +280,20 @@ class StrategyBase(bt.Strategy):
         stop_order.addinfo(is_liquidable=is_liquidable)
         self.stop_orders[stop_order.ref] = stop_order
         
-    def buy_stop_loss(self, close, size=None, multiplier=1):
-        self.log(f"=== buy cerebro value {self.broker.getvalue()}")
-        size = size if size else self.broker.getvalue()  * (self.p.cashperc / 100) * self.p.leverage / close
-        # size = self.broker.cash  * (self.p.cashperc / 100) * self.p.leverage / close
-        self.log(f"=== buy size, {size}")
-        # Binance minimum order size
-        size = max(size * multiplier, 0.0001)
+    def buy_stop_loss(self, close, multiplier=1):
+        # buy_order = self.buy(price=close, exectype=bt.Order.Limit, transmit=False)
+        buy_order = self.buy(transmit=False)
 
-        buy_order = self.buy(
-            size=size,
-            transmit=False, 
-        )
         # Kwargs do not work in bt-ccxt
         buy_order.addinfo(name="ENTRY LONG Order")
 
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
         stop_price = close - atrdist * self.atr[0]
 
-        lp = self.get_liquidation_price(side=1, pos_size=size, entry_price=close)
+        lp = self.get_liquidation_price(side=1, pos_size=buy_order.size, entry_price=close)
         lp_with_buffer = lp + self.atr[0] * 0.5
-        # lp_with_buffer = lp + 100
-        # lp_with_buffer = lp
         is_liquidable = lp_with_buffer > stop_price
-        # if is_liquidable:
-        #     txt = colored(f"===== STOP LONG Liquidation price {lp_with_buffer} used instead of {stop_price}", 'cyan')
-        #     print(txt)
-        # stop_price = max(stop_price, lp_with_buffer)
+        stop_price = max(stop_price, lp_with_buffer)
 
         stop_order = self.sell(
             exectype=bt.Order.StopLimit,
@@ -343,7 +320,7 @@ class StrategyBase(bt.Strategy):
 
         if send_telegram and ENV == PRODUCTION:
             telegram_txt = txt.replace(', ', '\n')
-            print("Telegram text: ", telegram_txt)
+            # print("Telegram text: ", telegram_txt)
             send_telegram_message(telegram_txt)
     
     def log_trade(self):
@@ -359,16 +336,15 @@ class StrategyBase(bt.Strategy):
     
 
     def log_profit(self, pnl, pnlcomm=None):
-        color = 'green'
-        if pnl < 0:
-            color = 'red'
+        color = 'red' if pnl < 0 else 'green'
         txt = 'OPERATION PROFIT: GROSS %.2f' % pnl
 
         if pnlcomm:
-            txt += ', NET %.2f' % pnlcomm
+            color = 'red' if pnlcomm < 0 else 'green'
+            txt += ' ; NET %.2f' % pnlcomm
         
         value = self.broker.getvalue()
-        txt += f'\nPORTFOLIO VALUE: {value}'
+        txt += f'\nPORTFOLIO VALUE: {value: .2f}'
 
         self.log(txt, level=logging.INFO, send_telegram=True, color=color)
 
@@ -459,45 +435,45 @@ class TESTBUY(StrategyBase):
         if self.position.size < 0:
             print("buy")
             self.close_and_cancel_stops()
-            self.buy_stop_loss(close, size=0.1)
+            self.buy_stop_loss(close)
 
         if self.position.size > 0:
             print("sell")
             self.close_and_cancel_stops()
-            self.sell_stop_loss(close, size=0.1)
+            self.sell_stop_loss(close)
 
         if self.position.size == 0:
             print("SHOULD BUY")
-            self.buy_stop_loss(close, size=0.1)
+            self.buy_stop_loss(close)
 
     
         # if self.position.size < 0 and not self.bought_once:
         #     print("buy")
         #     # self.buy(exectype=bt.Order.Limit, price=30000)
         #     self.close_and_cancel_stops()
-        #     self.buy_stop_loss(close, size=0.1)
+        #     self.buy_stop_loss(close)
         #     # self.buy()
         #     # Bitfinex derivative market buy
-        #     # self.buy(type='MARKET', lev=self.p.leverage, size=0.1)
+        #     # self.buy(type='MARKET', lev=self.p.leverage)
         #     self.bought_once = True
 
         # if self.position.size > 0 and not self.sold_once:
         #     print("sell")
         #     # self.sell(exectype=bt.Order.Limit, price=60000)
         #     self.close_and_cancel_stops()
-        #     self.sell_stop_loss(close, size=0.1)
+        #     self.sell_stop_loss(close)
         #     # self.sell()
         #     # Bitfinex derivative market buy
-        #     # self.sell(type='MARKET', lev=self.p.leverage, size=0.1)
+        #     # self.sell(type='MARKET', lev=self.p.leverage)
         #     self.sold_once = True
 
         # if self.position.size == 0:
         #     print("SHOULD BUY")
         #     self.close_and_cancel_stops()
-        #     self.buy_stop_loss(close, size=0.1)
+        #     self.buy_stop_loss(close)
         #     # self.buy()
         #     # Bitfinex derivative market buy
-        #     # self.buy(type='MARKET', lev=self.p.leverage, size=0.1)
+        #     # self.buy(type='MARKET', lev=self.p.leverage)
         #     # self.log('BUY CREATE, %.2f' % self.dataclose[0])
 
         # if self.position.size != 0 and self.bought_once and self.sold_once:
@@ -589,34 +565,6 @@ class StochMACD(StrategyBase):
         # self.mfi = MFI(self.datas[1], period=self.p.stoch_rsi_period)
         # self.cmf = CMF(self.datas[1], period=self.p.cmf_period)
 
-    def get_params_for_time(self):
-        dd = self.datas[0].datetime.date(0)
-        hh = self.datas[0].datetime.time()
-        # print(f'get params for datetime:')
-        # print('%s %s' % (dd.isoformat(), hh))
-        # print("interval date: ", self.sorted_params[self.interval_index][0])
-        # print("converted interval date: ", self.sorted_params[self.interval_index][0].replace(tzinfo=timezone.utc).timestamp())
-        time_now_string = f'{dd} {hh}'
-        # print("time_now_string", time_now_string)
-        time_now = time.mktime(time.strptime(time_now_string, "%Y-%m-%d %H:%M:%S"))
-        interval_unix_time = self.sorted_params[self.interval_index][0].replace(tzinfo=timezone.utc).timestamp()
-        if (interval_unix_time < time_now):
-            print("time now string: ", time_now_string)
-            print("time now: ", time_now)
-            print("interval dt", self.sorted_params[self.interval_index][0])
-            print("interval unix: ", interval_unix_time)
-            self.interval_index += 1
-            print(f"interval index: {self.interval_index}")
-            self.log(f'Params changed to: {self.sorted_params[self.interval_index][1]}', level=logging.WARNING)
-        return self.sorted_params[self.interval_index][1]
-
-    # def nextstart(self):
-    #     print('--------------------------------------------------')
-    #     print('nextstart called with len', len(self))
-    #     print('--------------------------------------------------')
-
-    #     super(StochMACD, self).nextstart()
-
     def next(self):        
         close = self.dataclose[0]
         currentStochRSI = self.stochrsi.l.fastk[0]
@@ -627,7 +575,7 @@ class StochMACD(StrategyBase):
         # dt1 = self.datas[1].datetime.datetime()
         # print("d1", dt1)
 
-        print("d0 OHLC: ", self.datas[0].datetime.datetime(), self.datas[0].open[0], self.datas[0].high[0], self.datas[0].low[0], self.datas[0].close[0])
+        # print("d0 OHLC: ", self.datas[0].datetime.datetime(), self.datas[0].open[0], self.datas[0].high[0], self.datas[0].low[0], self.datas[0].close[0])
         # print("d1 OHLC: ", self.datas[1].datetime.datetime(), self.datas[1].open[0], self.datas[1].high[0], self.datas[1].low[0], self.datas[1].close[0])
         # print("")
 

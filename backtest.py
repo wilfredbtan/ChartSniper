@@ -1,22 +1,34 @@
-import backtrader as bt
+import sys
+import logging
 import time
 from datetime import datetime
 
-from Commissions import CommInfo_Futures_Perc_Mult
+import backtrader as bt
+
+from Sizers import PercValue, maxRiskSizer
+from Commissions import CommInfo_Futures_Perc
 from Parser import parse_args
 from Datasets import *
 from strategies import StochMACD, WfaStochMACD
 from utils import get_sqn, get_trade_analysis
+from config import ENV, PRODUCTION
 
 def runstrat(args=None):
     args = parse_args(args)
+
+    if ENV == PRODUCTION:
+        logging.warning("Running backtest in production mode!")
+        sys.exit(-1) 
 
     # Need to disable the stdstats for optimization
     cerebro = bt.Cerebro(optreturn=(not args.optimize), quicknotify=True, stdstats=False)
 
     cerebro.broker.set_shortcash(False)
     cerebro.broker.set_cash(args.cash)
-    cerebro.broker.setcommission(commission=0.00015, leverage=args.leverage)
+    cerebro.addsizer(PercValue, perc=args.cashperc, min_size=0.0001)
+    # cerebro.broker.setcommission(commission=0.00015, leverage=args.leverage)
+    futures_perc = CommInfo_Futures_Perc(commission=0.02, leverage=args.leverage)
+    cerebro.broker.addcommissioninfo(futures_perc)
 
     fromdate = datetime.strptime(args.fromdate, '%Y-%m-%d')
     todate = datetime.strptime(args.todate, '%Y-%m-%d')
@@ -159,8 +171,8 @@ def runstrat(args=None):
             reversal_lowerband=args.reversal_lowerband,
             reversal_upperband=args.reversal_upperband,
             loglevel=args.loglevel,
-            leverage=args.leverage,
-            cashperc=args.cashperc,
+            # leverage=args.leverage,
+            leverage=logging.INFO,
             isWfa=False,
         )
 
@@ -176,8 +188,8 @@ def runstrat(args=None):
         final_value = cerebro.broker.getvalue()
         print('Final Portfolio Value: %.2f' % final_value)
         print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
-        get_trade_analysis(result[0].analyzers.ta.get_analysis())
-        get_sqn(result[0].analyzers.sqn.get_analysis())
+        print(get_trade_analysis(result[0].analyzers.ta.get_analysis()))
+        print(get_sqn(result[0].analyzers.sqn.get_analysis()))
 
         sqn = result[0].analyzers.sqn.get_analysis()
         PnL = round(result[0].broker.get_value() - args.cash, 2)

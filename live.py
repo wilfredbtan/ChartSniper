@@ -1,9 +1,6 @@
 import logging
-import sys
-import signal
 import time
 import datetime as dt
-from typing import final
 import backtrader as bt
 
 from pprint import pprint
@@ -16,18 +13,16 @@ from config import BINANCE, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, D
 
 from utils import get_trade_analysis, get_sqn, send_telegram_message 
 
+from Sizers import PercValue
+from Commissions import CommInfo_Futures_Perc
 from strategies import StochMACD, TESTBUY
 from Parser import parse_args
 from Datasets import *
 
 def main():
     cerebro = bt.Cerebro(quicknotify=True)
-    # cerebro = bt.Cerebro()
     cerebro.broker.set_shortcash(False)
-
     leverage = 5
-
-    cerebro.broker.setcommission(commission=0.00015, leverage=leverage)
 
     if ENV == PRODUCTION:  # Live trading with Binance
         broker_config = {
@@ -55,7 +50,7 @@ def main():
             # currency='TESTUSDT', 
             config=broker_config, 
             retries=5, 
-            debug=DEBUG,
+            # debug=DEBUG,
             # For Bitfinex
             # balance_type='derivatives',
             sandbox=SANDBOX
@@ -151,7 +146,7 @@ def main():
         dataname = DATASETS.get('btc_hourly')
         data = bt.feeds.GenericCSVData(
             dataname=dataname,
-            fromdate=dt.datetime(2018,2,1),
+            fromdate=dt.datetime(2017,8,18),
             todate=dt.datetime(2021,6,9),
             timeframe=bt.TimeFrame.Minutes,
             nullvalue=0.0,
@@ -170,10 +165,6 @@ def main():
 
     cashperc = 50
 
-    # Analyzers to evaluate trades and strategies
-    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
-    cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
-
     # Include Strategy
     # cerebro.addstrategy(
     #     StochMACD,
@@ -186,24 +177,33 @@ def main():
     #     rsi_lowerband=49,
     #     reversal_lowerband=43,
     #     reversal_upperband=48,
-    #     cashperc=cashperc,
     #     leverage=leverage
     # )
 
-    cerebro.addstrategy(TESTBUY,
-                        cashperc=cashperc,
-                        leverage=leverage)
+    cerebro.addstrategy(TESTBUY, leverage=leverage, loglevel=logging.INFO)
+
+    futures_perc = CommInfo_Futures_Perc(commission=0.02, leverage=leverage)
+    cerebro.broker.addcommissioninfo(futures_perc)
+
+    # Analyzers to evaluate trades and strategies
+    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
+    cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
+
+    # cerebro.addsizer(PercValue, perc=cashperc, min_size=0.0001)
+    cerebro.addsizer(bt.sizers.FixedSize, stake=0.1)
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()
+    # (initial_cash, initial_value) = cerebro.broker.get_wallet_balance(currency=COIN_REFER)
     print('Starting Portfolio Value: %.2f' % initial_value)
     send_telegram_message("===== Chart Sniper initialized =====")
     result = cerebro.run()
 
     # Print analyzers - results
+    # (final_cash, final_value) = cerebro.broker.get_wallet_balance(currency=COIN_REFER)
     final_value = cerebro.broker.getvalue()
-    final_value_string = 'Final Portfolio Value: %.2f' % final_value
-    profit_string = 'Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100)
+    final_value_string = f'Final Portfolio Value: {final_value:.2f}'
+    profit_string = f'Profit {((final_value - initial_value) / initial_value * 100):.3f}%%'
     ta_string = get_trade_analysis(result[0].analyzers.ta.get_analysis())
     sqn_string = get_sqn(result[0].analyzers.sqn.get_analysis())
 
@@ -213,7 +213,7 @@ def main():
     logging.warning(sqn_string)
 
     if ENV == PRODUCTION:
-        telegram_txt = f'{final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string}'
+        telegram_txt = f'```{final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string}```'
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
         print("Chart Sniper finished by user on %s" % datetime_str)
         send_telegram_message(telegram_txt)

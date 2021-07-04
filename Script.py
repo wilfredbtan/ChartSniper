@@ -77,8 +77,8 @@ rsi_lowerband = '--rsi_lowerband 49'
 # Individual tests
 # print("===== Short Bull (4 mths) =====")
 # os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
-# print("===== Bear =====")
-# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
+print("===== Bear =====")
+os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
 # print("===== Crab =====")
 # os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
 # print("===== Bull =====")
@@ -88,8 +88,8 @@ rsi_lowerband = '--rsi_lowerband 49'
 # print("===== Custom =====")
 # os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -v')
 
-print("===== Multiple Runs =====")
-os.system(f'python3 multiple_runs.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# print("===== Multiple Runs =====")
+# os.system(f'python3 multiple_runs.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
 ### CMF 

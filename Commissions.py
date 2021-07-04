@@ -1,11 +1,12 @@
 import backtrader as bt
 
-class CommInfo_Futures_Perc_Mult(bt.CommInfoBase):
+# https://www.binance.com/en/support/faq/360033544231
+class CommInfo_Futures_Perc(bt.CommInfoBase):
     params = (
-      ('stocklike', False),  # Futures
+      ('stocklike', True),  # Binance futures fees works more like stocks
       ('commtype', bt.CommInfoBase.COMM_PERC),  # Apply % Commission
-    # ('percabs', False),  # pass perc as xx% which is the default
+      ('percabs', False),  # pass perc as xx% which is the default
     )
 
     def _getcommission(self, size, price, pseudoexec):
-        return size * price * self.p.commission * self.p.mult
+        return size * price * self.p.commission
