@@ -21,6 +21,7 @@ class StrategyBase(bt.Strategy):
     )
 
     def handleInterrupt(self, sig, frame):
+        print("SIGNINT received")
         self.env.runstop()
 
     def __init__(self):
@@ -116,10 +117,10 @@ class StrategyBase(bt.Strategy):
                             level=logging.INFO,
                             send_telegram=True)
                             # No commission (fee) data available as at 12 June 2021
-                        print("BUY order id: ", order_id)
+                        # print("BUY order id: ", order_id)
                         if order_name == "CLOSE":
                             pnl = self.last_sell_price - order_cost  
-                            print("===== NOTIFY_ORDER pnl")
+                            # print("===== NOTIFY_ORDER pnl")
                             self.log_profit(pnl)
                             # print("buy close broker cash")
                             # print("cerebro cash", self.broker.cash)
@@ -137,10 +138,10 @@ class StrategyBase(bt.Strategy):
                             level=logging.INFO,
                             send_telegram=True)
                             # No commission (fee) data available as at 12 June 2021
-                        print("SELL order id: ", order_id)
+                        # print("SELL order id: ", order_id)
                         if order_name == "CLOSE":
                             pnl = order_cost - self.last_buy_price
-                            print("===== NOTIFY_ORDER pnl")
+                            # print("===== NOTIFY_ORDER pnl")
                             self.log_profit(pnl)
                             # print("sell close broker cash")
                             # print("cerebro cash", self.broker.cash)
@@ -182,8 +183,8 @@ class StrategyBase(bt.Strategy):
     def notify_trade(self, trade):
         if not trade.isclosed:
             return
-        print("===== NOTIFY_TRADE pnl")
-        print("notify_trade comminfo", self.broker.p.commission.p.__dict__)
+        # print("===== NOTIFY_TRADE pnl")
+        # print("notify_trade comminfo", self.broker.p.commission.p.__dict__)
         self.log_profit(trade.pnl, trade.pnlcomm)
 
     def get_maintenance_margin_rate_and_amt(self, notional_value):
@@ -242,6 +243,7 @@ class StrategyBase(bt.Strategy):
         return lp
 
     def close_and_cancel_stops(self):
+        print("Position size before close:", self.position)
         close_order = self.close()
         if close_order:
             close_order.addinfo(name="CLOSE")
@@ -249,7 +251,7 @@ class StrategyBase(bt.Strategy):
             if len(self.stop_orders) > 1:
                 print(self.stop_orders)
             for oref in self.stop_orders.keys():
-                print("-- remove ref: ", oref)
+                # print("-- remove ref: ", oref)
                 self.cancel(self.stop_orders[oref])
             # print("Number of stop orders: ", len(self.stop_orders))
             self.stop_orders = {}
@@ -433,17 +435,15 @@ class TESTBUY(StrategyBase):
         print("LIVE NEXT")
 
         if self.position.size < 0:
-            print("buy")
+            self.log("buy in testbuy", color='yellow', level=logging.INFO)
             self.close_and_cancel_stops()
             self.buy_stop_loss(close)
-
-        if self.position.size > 0:
-            print("sell")
+        elif self.position.size > 0:
+            self.log("sell in testbuy", color='yellow', level=logging.INFO)
             self.close_and_cancel_stops()
             self.sell_stop_loss(close)
-
-        if self.position.size == 0:
-            print("SHOULD BUY")
+        else:
+            self.log("STARTING in testbuy", color='yellow', level=logging.INFO)
             self.buy_stop_loss(close)
 
     
@@ -752,7 +752,7 @@ class StochMACD(StrategyBase):
                
                
         # Need to buy
-        if self.position.size < 0:
+        elif self.position.size < 0:
             if should_close_on_reversal:
                 if currentStochRSI > self.p.stoch_lowerband and currentStochRSI < self.p.reversal_lowerband:
                     # If fast crosses slow upwards, trend reversal, buy
@@ -778,7 +778,8 @@ class StochMACD(StrategyBase):
                 else:
                     self.buy(name="ENTRY LONG Order")
                 
-        if self.position.size == 0:
+        # if self.position.size == 0:
+        else:
             if should_buy:
                 self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 if should_stop_loss:

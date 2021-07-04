@@ -1,3 +1,4 @@
+import sys
 import logging
 import time
 import datetime as dt
@@ -48,6 +49,7 @@ def main():
             currency=COIN_REFER, 
             #BitFinex. Might need to pull and edit to get the correct currency using fetchBalance(margin)
             # currency='TESTUSDT', 
+            symbol=f'{COIN_TARGET}{COIN_REFER}',
             config=broker_config, 
             retries=5, 
             # debug=DEBUG,
@@ -101,7 +103,7 @@ def main():
             'order_types': {
                 bt.Order.Market: 'market',
                 bt.Order.Limit: 'limit',
-                bt.Order.StopLimit: 'stop_market'
+                bt.Order.StopLimit: 'stop_market',
                 # Bitfinex
                 # bt.Order.Market: 'MARKET',
                 # bt.Order.Limit: 'LIMIT',
@@ -213,7 +215,7 @@ def main():
     logging.warning(sqn_string)
 
     if ENV == PRODUCTION:
-        telegram_txt = f'```{final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string}```'
+        telegram_txt = f'``` {final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string} ```'
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
         print("Chart Sniper finished by user on %s" % datetime_str)
         send_telegram_message(telegram_txt)
@@ -231,3 +233,4 @@ if __name__ == "__main__":
         send_telegram_message("Bot finished with error: %s on %s" % (err, datetime_str))
         print("Chart Sniper finished with error: ", err)
         raise
+        # sys.exit(0)

@@ -171,8 +171,8 @@ def runstrat(args=None):
             reversal_lowerband=args.reversal_lowerband,
             reversal_upperband=args.reversal_upperband,
             loglevel=args.loglevel,
-            # leverage=args.leverage,
-            leverage=logging.INFO,
+            leverage=args.leverage,
+            # leverage=logging.INFO,
             isWfa=False,
         )
 
