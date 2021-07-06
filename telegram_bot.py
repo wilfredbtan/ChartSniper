@@ -40,10 +40,9 @@ class Telegram_Bot:
         dp.add_error_handler(self.error_handler)
 
     def run(self):
-        self.is_running = True
+        self.send_message("The most stonks trading bot has been activated")
         self.updater.start_polling()
         self.updater.idle()
-        self.send_message("The most stonks trading bot has been activated")
     
     def shutdown_confirmation(self, update, context):
         options = [
@@ -62,19 +61,30 @@ class Telegram_Bot:
         query.answer()
         if query.data == 'Yes':
             query.edit_message_text(text='== Shutting Down Telegram Bot ==')
+            self.chart_sniper.send_signal(signal.SIGINT)
             self.updater.stop()
         else:
             query.edit_message_text(text='== The stonks continues ==')
 
     def start(self, update, context):
         '''Starts chart sniper'''
+        if self.is_running:
+            update.message.reply_text('== Unable to start. Chart Sniper is already Running ==')
+            return
+
+        self.is_running = True
         update.message.reply_text('== Starting Chart Sniper ==')
         self.chart_sniper = subprocess.Popen(['python3','live.py'])
 
     def stop(self, update, context):
         '''Stops Chart Sniper'''
+        if not self.is_running:
+            update.message.reply_text('== Unable to stop. Chart Sniper is not running==')
+            return
+
         update.message.reply_text('== Terminating Chart Sniper ==')
         self.chart_sniper.send_signal(signal.SIGINT)
+        self.is_running = False
 
     def error_handler(self, update: object, context: CallbackContext) -> None:
         """Log the error and send a telegram message to notify the developer."""

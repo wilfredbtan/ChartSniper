@@ -6,9 +6,6 @@ load_dotenv()
 PRODUCTION = "production"
 DEVELOPMENT = "development"
 
-COIN_TARGET = "BTC"
-COIN_REFER = "USDT"
-
 SANDBOX = True
 ENV = os.getenv("ENVIRONMENT", PRODUCTION)
 DEBUG = True
@@ -26,12 +23,18 @@ BINANCE
 #   "secret": PROD_BINANCE_SECRET
 # }
 
+# COIN_TARGET = "BTC"
+# COIN_REFER = "USDT"
+
 TEST_BINANCE_FUTURE_API_KEY=os.environ.get("TEST_BINANCE_FUTURE_API_KEY")
 TEST_BINANCE_FUTURE_SECRET=os.environ.get("TEST_BINANCE_FUTURE_SECRET")
 
 BINANCE = {
+  "name": "binanceusdm",
   "key": TEST_BINANCE_FUTURE_API_KEY,
-  "secret": TEST_BINANCE_FUTURE_SECRET
+  "secret": TEST_BINANCE_FUTURE_SECRET,
+  "coin_target": "BTC",
+  "coin_refer": "USDT"
 }
 
 
@@ -44,16 +47,20 @@ BITFINEX
 # COIN_TARGET = "TESTBTCF0"
 # COIN_REFER = "TESTUSDTF0"
 
-# TEST_BITFINEX_API_KEY=os.environ.get("TEST_BITFINEX_API_KEY")
-# TEST_BITFINEX_SECRET=os.environ.get("TEST_BITFINEX_SECRET")
+TEST_BITFINEX_API_KEY=os.environ.get("TEST_BITFINEX_API_KEY")
+TEST_BITFINEX_SECRET=os.environ.get("TEST_BITFINEX_SECRET")
 
-# BITFINEX = {
-#   "key": TEST_BITFINEX_API_KEY,
-#   "secret": TEST_BITFINEX_SECRET
-# }
+BITFINEX = {
+  "name": "bitfinex2",
+  "key": TEST_BITFINEX_API_KEY,
+  "secret": TEST_BITFINEX_SECRET,
+  "coin_target": "TESTBTCF0",
+  "coin_refer": "TESTUSDTF0",
+  "balance_type": "derivatives"
+}
 
 '''
-KRAKEN
+KRAKEN (NOT FULLY WORKING)
 '''
 # COIN_TARGET = "BTC"
 # COIN_REFER = "USDT"
@@ -62,17 +69,30 @@ KRAKEN
 # TEST_KRAKEN_SECRET=os.environ.get("TEST_KRAKEN_SECRET")
 
 # KRAKEN = {
+#   "name": "kraken",
 #   "key": TEST_KRAKEN_API_KEY,
-#   "secret": TEST_KRAKEN_SECRET
+#   "secret": TEST_KRAKEN_SECRET,
+#   "coin_target": "BTC",
+#   "coin_refer": "USDT"
 # }
 
-# TEST_FTX_API_KEY=os.environ.get("TEST_FTX_API_KEY")
-# TEST_FTX_SECRET=os.environ.get("TEST_FTX_SECRET")
+'''
+FTX
+'''
 
-# FTX = {
-#   "key": TEST_FTX_API_KEY,
-#   "secret": TEST_FTX_SECRET
-# }
+TEST_FTX_API_KEY=os.environ.get("TEST_FTX_API_KEY")
+TEST_FTX_SECRET=os.environ.get("TEST_FTX_SECRET")
+
+FTX = {
+  "name": "ftx",
+  "key": TEST_FTX_API_KEY,
+  "secret": TEST_FTX_SECRET,
+  "coin_target": "BTC",
+  "coin_refer": "USDT"
+}
+
+
+EXCHANGE = BINANCE
 
 TELEGRAM = {
   "chat_id": os.environ.get("TELEGRAM_CHAT_ID"),

@@ -5,9 +5,10 @@ import datetime as dt
 import backtrader as bt
 
 from pprint import pprint
+from termcolor import colored
 
 from ccxtbt import CCXTStore, CCXTFeed
-from config import BINANCE, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
+from config import EXCHANGE, BINANCE, ENV, PRODUCTION, SANDBOX, DEBUG
 # from config import BITFINEX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 # from config import KRAKEN, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 # from config import FTX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
@@ -20,41 +21,34 @@ from strategies import StochMACD, TESTBUY
 from Parser import parse_args
 from Datasets import *
 
+
 def main():
     cerebro = bt.Cerebro(quicknotify=True)
     cerebro.broker.set_shortcash(False)
-    leverage = 5
 
     if ENV == PRODUCTION:  # Live trading with Binance
+
         broker_config = {
-            # 'apiKey': FTX.get("key"),
-            # 'secret': FTX.get("secret"),
-            # 'apiKey': KRAKEN.get("key"),
-            # 'secret': KRAKEN.get("secret"),
-            # 'apiKey': BITFINEX.get("key"),
-            # 'secret': BITFINEX.get("secret"),
-            'apiKey': BINANCE.get("key"),
-            'secret': BINANCE.get("secret"),
+            'apiKey': EXCHANGE.get("key"),
+            'secret': EXCHANGE.get("secret"),
             'nonce': lambda: str(int(time.time() * 1000)),
             'enableRateLimit': True,
             # 'verbose': True,
         }
 
+        COIN_TARGET = EXCHANGE.get("coin_target")
+        COIN_REFER = EXCHANGE.get("coin_refer")
+
         store = CCXTStore(
-            exchange='binanceusdm', 
-            # exchange='bitfinex2', 
-            # exchange='kraken', 
-            # exchange='ftx', 
+            exchange=EXCHANGE.get("name"),
             # Must have that currency available in order to trade it
-            currency=COIN_REFER, 
-            #BitFinex. Might need to pull and edit to get the correct currency using fetchBalance(margin)
-            # currency='TESTUSDT', 
-            symbol=f'{COIN_TARGET}{COIN_REFER}',
+            currency=COIN_REFER,
+            # symbol=f'{COIN_TARGET}{COIN_REFER}',
             config=broker_config, 
             retries=5, 
             # debug=DEBUG,
             # For Bitfinex
-            # balance_type='derivatives',
+            balance_type=EXCHANGE.get('derivatives', None),
             sandbox=SANDBOX
         )
 
@@ -62,42 +56,17 @@ def main():
         # pprint(dir(store.exchange))
 
         symbol = f'{COIN_TARGET}/{COIN_REFER}'
-        # symbol = 'BTC-PERP'
         market = store.exchange.market(symbol)
         # pprint(store.exchange.markets[symbol])
 
         # balance = store.exchange.fetch_balance({'type': 'margin'})
         # pprint(balance)
 
-        dual_response = store.exchange.fapiPrivate_get_positionside_dual()
-        if dual_response['dualSidePosition']:
-            print('You are in Hedge Mode')
-        else:
-            print('You are in One-way Mode')
-        
-        # Set margin type
-        # type_response = store.exchange.fapiPrivate_post_margintype ({
-        #     'symbol': market['id'],
-        #     'marginType': 'ISOLATED',
-        # })
-        # print(type_response)
+        commission = 0.04
+        leverage = 5
 
-        # Set leverage multiplier
-        leverage_response = store.exchange.fapiPrivate_post_leverage({
-            'symbol': market['id'],
-            'leverage': leverage,
-        })
-
-        pprint(leverage_response)
-
-        #Test get trades
-
-        # print("GET Trades")
-        # trades_response = store.exchange.fapiPrivate_get_usertrades ({
-        #     'symbol': market['id'],
-        #     'limit': 10,
-        # })
-        # pprint(trades_response)
+        if EXCHANGE == BINANCE:
+            commission = request_binance_api(store=store, symbol=market['id'], leverage=leverage)
 
         broker_mapping = {
             'order_types': {
@@ -127,8 +96,8 @@ def main():
         # hist_start_date = dt.datetime.utcnow() - dt.timedelta(hours=1000)
         hist_start_date = dt.datetime.utcnow() - dt.timedelta(minutes=1000)
         data = store.getdata(
-            dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
-            name='%s%s' % (COIN_TARGET, COIN_REFER),
+            dataname=symbol,
+            name=market['id'],
             timeframe=bt.TimeFrame.Minutes,
             fromdate=hist_start_date,
             # compression=60,
@@ -143,8 +112,6 @@ def main():
         cerebro.adddata(data)
 
     else:  # Backtesting with CSV file
-        cerebro.broker.setcommission(commission=0.0002, leverage=5)
-
         dataname = DATASETS.get('btc_hourly')
         data = bt.feeds.GenericCSVData(
             dataname=dataname,
@@ -179,12 +146,14 @@ def main():
     #     rsi_lowerband=49,
     #     reversal_lowerband=43,
     #     reversal_upperband=48,
-    #     leverage=leverage
+    #     leverage=leverage,
+    #     loglevel=logging.INFO
     # )
 
     cerebro.addstrategy(TESTBUY, leverage=leverage, loglevel=logging.INFO)
 
-    futures_perc = CommInfo_Futures_Perc(commission=0.02, leverage=leverage)
+    print("Commission: ", commission)
+    futures_perc = CommInfo_Futures_Perc(commission=commission, leverage=leverage)
     cerebro.broker.addcommissioninfo(futures_perc)
 
     # Analyzers to evaluate trades and strategies
@@ -192,13 +161,18 @@ def main():
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
     # cerebro.addsizer(PercValue, perc=cashperc, min_size=0.0001)
-    cerebro.addsizer(bt.sizers.FixedSize, stake=0.1)
+    cerebro.addsizer(bt.sizers.FixedSize, stake=1)
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()
     # (initial_cash, initial_value) = cerebro.broker.get_wallet_balance(currency=COIN_REFER)
     print('Starting Portfolio Value: %.2f' % initial_value)
-    send_telegram_message("===== Chart Sniper initialized =====")
+    datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
+    if ENV == PRODUCTION:
+        send_telegram_message("== Chart Sniper initialized ==")
+        send_telegram_message(f"Date: {datetime_str}")
+        send_telegram_message(f"Starting Portfolio Value: {initial_value: .2f}")
+
     result = cerebro.run()
 
     # Print analyzers - results
@@ -209,28 +183,152 @@ def main():
     ta_string = get_trade_analysis(result[0].analyzers.ta.get_analysis())
     sqn_string = get_sqn(result[0].analyzers.sqn.get_analysis())
 
-    logging.warning(final_value_string)
-    logging.warning(profit_string)
-    logging.warning(ta_string)
-    logging.warning(sqn_string)
+    logging.info(final_value_string)
+    logging.info(profit_string)
+    logging.info(ta_string)
+    logging.info(sqn_string)
 
     if ENV == PRODUCTION:
-        telegram_txt = f'``` {final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string} ```'
+        telegram_txt = f"```\n{final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string}```"
+
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
         print("Chart Sniper finished by user on %s" % datetime_str)
-        send_telegram_message(telegram_txt)
+        send_telegram_message(telegram_txt, parse_mode="Markdown")
         send_telegram_message("Bot finished by user on %s" % datetime_str)
 
 
     # if DEBUG:
     #     cerebro.plot()
 
+
+def request_binance_api(store, symbol, leverage):
+    # https://binance-docs.github.io/apidocs/futures/en/#user-api-trading-quantitative-rules-indicators-user_data
+    '''
+    Change Margin Type
+        - POST /fapi/v1/marginType
+    Cannot call this if the margin type is already set to the desired type. 
+    E.g. If the margin type is CROSSED, setting it to CROSSED again will result in an error
+    '''
+    # type_response = store.exchange.fapiPrivate_post_margintype ({
+    #     'symbol': market['id'],
+    #     'marginType': 'CROSSED',
+    # })
+    # print(type_response)
+
+    # Set leverage multiplier
+    '''
+    Change Initial Leverage
+        - POST /fapi/v1/leverage
+    '''
+    leverage_response = store.exchange.fapiPrivate_post_leverage({
+        'symbol': symbol,
+        'leverage': leverage,
+    })
+
+    pprint(leverage_response)
+
+    '''
+    Get Commision Rate
+        - GET /fapi/v1/commissionRate
+    {
+        "symbol": "BTCUSDT",
+        "makerCommissionRate": "0.0002",  // 0.02%
+        "takerCommissionRate": "0.0004"   // 0.04%
+    }
+    '''
+    commission_response = store.exchange.fapiPrivate_get_commissionrate ({
+        'symbol': symbol
+    })
+    # print("Get Commission Rate")
+    # pprint(commission_response)
+    commission = float(commission_response['makerCommissionRate']) * 100
+
+    '''
+    Get Open Orders
+        - GET /fapi/v1/openOrders
+    [
+        {
+            "avgPrice": "0.00000",
+            "clientOrderId": "abc",
+            "cumQuote": "0",
+            "executedQty": "0",
+            "orderId": 1917641,
+            "origQty": "0.40",
+            "origType": "TRAILING_STOP_MARKET",
+            "price": "0",
+            "reduceOnly": false,
+            "side": "BUY",
+            "positionSide": "SHORT",
+            "status": "NEW",
+            "stopPrice": "9300",                // please ignore when order type is TRAILING_STOP_MARKET
+            "closePosition": false,   // if Close-All
+            "symbol": "BTCUSDT",
+            "time": 1579276756075,              // order time
+            "timeInForce": "GTC",
+            "type": "TRAILING_STOP_MARKET",
+            "activatePrice": "9020",            // activation price, only return with TRAILING_STOP_MARKET order
+            "priceRate": "0.3",                 // callback rate, only return with TRAILING_STOP_MARKET order
+            "updateTime": 1579276756075,        // update time
+            "workingType": "CONTRACT_PRICE",
+            "priceProtect": false            // if conditional order trigger is protected   
+        }
+    ]
+    '''
+    order_response = store.exchange.fapiPrivate_get_openorders ({
+        'symbol': symbol
+    })
+    # print("Get Order Information")
+    # pprint(order_response)
+    has_open_orders = len(order_response) > 0
+    if has_open_orders:
+        txt = "== OPEN ORDERS NOT EXECUTED =="
+        print(colored(txt, 'red'))
+        if PRODUCTION:
+            send_telegram_message(txt)
+
+    '''
+    Get Position Information
+        - GET /fapi/v2/positionRisk
+    [
+        {
+            "entryPrice": "0.00000",
+            "marginType": "isolated", 
+            "isAutoAddMargin": "false",
+            "isolatedMargin": "0.00000000", 
+            "leverage": "10", 
+            "liquidationPrice": "0", 
+            "markPrice": "6679.50671178",   
+            "maxNotionalValue": "20000000", 
+            "positionAmt": "0.000", 
+            "symbol": "BTCUSDT", 
+            "unRealizedProfit": "0.00000000", 
+            "positionSide": "BOTH",
+        }
+    ]
+    '''
+    position_response = store.exchange.fapiPrivate_get_positionrisk ({
+        'symbol': symbol
+    })
+    # print("Get Position Information")
+    # pprint(position_response)
+    has_open_positions = len(position_response) > 0 and float(position_response[0]['entryPrice']) != 0
+    if has_open_positions:
+        txt = "== EXISTING POSITION NOT CLOSED == "
+        print(colored(txt, 'red'))
+        if PRODUCTION:
+            send_telegram_message(txt)
+    
+    if has_open_positions or has_open_orders:
+        raise Exception('Unable to start ChartSniper with existing positions or open orders')
+
+    return commission
+
 if __name__ == "__main__":
     try:
         main()
     except Exception as err:
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
-        send_telegram_message("Bot finished with error: %s on %s" % (err, datetime_str))
         print("Chart Sniper finished with error: ", err)
+        send_telegram_message(f"Bot finished with error: {err}\non {datetime_str}", parse_mode=None)
         raise
         # sys.exit(0)

@@ -1,10 +1,11 @@
-from termcolor import colored
-from excelwriter import get_df_row, save_dataframe_to_excel
-import os
-from pprint import pprint
-from Parser import parse_args
+import statistics
 import time
 import datetime as dt
+
+from termcolor import colored
+from excelwriter import get_df_row, save_dataframe_to_excel
+from pprint import pprint
+from Parser import parse_args
 from dateutil.relativedelta import relativedelta
 from teststrategy import run_strategy
 from strategies import StochMACD
@@ -42,11 +43,16 @@ def run_test(args=None):
     cash = 5000
 
     count = 0
-    total_sqn = 0
-    total_pnl = 0
-    total_trades = 0
-    min_sqn = float("inf")
-    min_pnl = float("inf")
+    sqns = []
+    pnls = []
+    trades = []
+    # total_sqn = 0
+    # total_pnl = 0
+    # total_trades = 0
+    # min_sqn = float("inf")
+    # min_pnl = float("inf")
+    # max_sqn = float("inf")
+    # max_pnl = float("inf")
 
     while (current_sample_date + relativedelta(months=+test_period) < end_sample_date):
         in_period = (current_sample_date, current_sample_date + relativedelta(months=+test_period))
@@ -61,6 +67,7 @@ def run_test(args=None):
             fromdate=in_period[0],
             todate=in_period[1],
             cash=cash,
+            cashperc=args.cashperc,
             macd1=args.macd1,
             macd2=args.macd2,
             macdsig=args.macdsig,
@@ -81,7 +88,6 @@ def run_test(args=None):
             reversal_upperband=args.reversal_upperband,
             loglevel=args.loglevel,
             leverage=args.leverage,
-            cashperc=args.cashperc,
             isWfa=False
         )
 
@@ -97,11 +103,16 @@ def run_test(args=None):
         print(f"trades: {result['trades']}")
         # print("params", result['params'].__dict__)
 
-        total_sqn += sqn
-        total_pnl += pnl
-        total_trades += result['trades']
-        min_sqn = min(min_sqn, sqn)
-        min_pnl = min(min_pnl, pnl)
+        # total_sqn += sqn
+        # total_pnl += pnl
+        # total_trades += result['trades']
+        # min_sqn = min(min_sqn, sqn)
+        # min_pnl = min(min_pnl, pnl)
+        # max_sqn = max(max_sqn, sqn)
+        # max_pnl = max(max_pnl, pnl)
+        sqns.append(sqn)
+        pnls.append(pnl)
+        trades.append(result['trades'])
 
         count += 1
 
@@ -109,12 +120,36 @@ def run_test(args=None):
     
     # Final result
     print("+++++ Final Result +++++")
-    print(f"Avg SQN: {total_sqn / count : .2f}")
-    print(f"Min SQN: {min_sqn : .2f}")
-    print(f"Avg pnl: {total_pnl / count : .2f}")
-    print(f"Min pnl: {min_pnl : .2f}")
-    print(f"Avg trades: {total_trades / count: .2f}")
+    min_pnl = min(pnls)
+    max_pnl = max(pnls)
+    avg_pnl = sum(pnls) / len(pnls)
+    std_pnl = statistics.stdev(pnls)
 
+    min_sqn = min(sqns)
+    max_sqn = max(sqns)
+    avg_sqn = sum(sqns) / len(sqns)
+    std_sqn = statistics.stdev(sqns)
+
+    min_trade = min(trades)
+    max_trade = max(trades)
+    avg_trade = sum(trades) / len(trades)
+    std_trade = statistics.stdev(trades)
+
+    print("PNL:")
+    print(f"    min: {min_pnl : .2f}")
+    print(f"    max: {max_pnl : .2f}")
+    print(f"    avg: {avg_pnl : .2f}")
+    print(f"    std: {std_pnl : .2f}")
+    print("SQN:")
+    print(f"    min: {min_sqn : .2f}")
+    print(f"    max: {max_sqn : .2f}")
+    print(f"    avg: {avg_sqn : .2f}")
+    print(f"    std: {std_sqn : .2f}")
+    print("TRADES:")
+    print(f"    min: {min_trade : .2f}")
+    print(f"    max: {max_trade : .2f}")
+    print(f"    avg: {avg_trade : .2f}")
+    print(f"    std: {std_trade : .2f}")
 
 if __name__ == '__main__':
     start_time = time.time()

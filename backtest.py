@@ -27,7 +27,7 @@ def runstrat(args=None):
     cerebro.broker.set_cash(args.cash)
     cerebro.addsizer(PercValue, perc=args.cashperc, min_size=0.0001)
     # cerebro.broker.setcommission(commission=0.00015, leverage=args.leverage)
-    futures_perc = CommInfo_Futures_Perc(commission=0.02, leverage=args.leverage)
+    futures_perc = CommInfo_Futures_Perc(commission=0.04, leverage=args.leverage)
     cerebro.broker.addcommissioninfo(futures_perc)
 
     fromdate = datetime.strptime(args.fromdate, '%Y-%m-%d')
@@ -83,6 +83,7 @@ def runstrat(args=None):
             macd1=9,
             macd2=21,
             macdsig=8,
+
             # macd1=10,
             # macd2=16,
             # macdsig=5,
@@ -90,16 +91,16 @@ def runstrat(args=None):
             # atrdist=range(1,10),
             atrdist=5,
 
-            # reversal_sensitivity=range(5, 20),
-            reversal_sensitivity=17,
+            reversal_sensitivity=range(5, 20),
+            # reversal_sensitivity=17,
 
             # rsi_upperband=range(40,55),
             # rsi_lowerband=range(40,55),
             rsi_upperband=45,
             rsi_lowerband=49,
 
-            cmf_upperband=range(2,9),
-            cmf_lowerband=range(-20,-9),
+            # cmf_upperband=range(2,9),
+            # cmf_lowerband=range(-20,-9),
 
             # reversal_lowerband=range(40,53),
             # reversal_upperband=range(45,55),
@@ -131,14 +132,14 @@ def runstrat(args=None):
                         # strategy.p.macd1, 
                         # strategy.p.macd2, 
                         # strategy.p.macdsig, 
-                        # strategy.p.reversal_sensitivity, 
+                        strategy.p.reversal_sensitivity, 
                         # strategy.p.reversal_lowerband,
                         # strategy.p.reversal_upperband,
                         # strategy.p.leverage, 
                         # strategy.p.rsi_upperband,
                         # strategy.p.rsi_lowerband,
-                        strategy.p.cmf_upperband,
-                        strategy.p.cmf_lowerband,
+                        # strategy.p.cmf_upperband,
+                        # strategy.p.cmf_lowerband,
                     ]
                 )
         sort_by_analyzer = sorted(final_results_list, key=lambda x: x[0], reverse=True)
@@ -203,7 +204,7 @@ def runstrat(args=None):
                 result[0].p.macdsig, 
                 result[0].p.reversal_sensitivity, 
                 result[0].p.rsi_upperband,
-                result[0].p.rsi_upperband,
+                result[0].p.rsi_lowerband,
                 result[0].p.reversal_lowerband,
                 result[0].p.reversal_upperband,
                 # result[0].p.leverage, 

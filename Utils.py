@@ -65,15 +65,16 @@ def get_sqn(analyzer):
     return 'SQN: {}'.format(sqn)
 
 
-def send_telegram_message(message="", parse_mode="Markdown"):
-    if ENV != "production":
-        return
+def send_telegram_message(message="", parse_mode=None):
     base_url = "https://api.telegram.org/bot%s" % TELEGRAM.get("bot")
-    return requests.get("%s/sendMessage" % base_url, params={
+    params = {
         'chat_id': TELEGRAM.get("chat_id"),
         'text': message,
-        'parse_mode': parse_mode,
-    })
+    }
+    if parse_mode is not None:
+        params['parse_mode'] = parse_mode
+
+    return requests.get(f"{base_url}/sendMessage", params=params)
 
 if ENV == PRODUCTION:
     response = send_telegram_message("== Initializing utils ==")

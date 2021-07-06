@@ -9,7 +9,8 @@ all_minute_date='--fromdate 2019-9-9 --todate 2021-6-9'
 # hourly range
 all_hourly_date='--fromdate 2017-8-18 --todate 2021-6-9'
 
-# All time
+cashperc = '--cashperc 50'
+
 # Buggy leverage
 macd = '--macd1 9 --macd2 21 --macdsig 8' # Does even better when shorts are divided by 2 and is buggy lol
 # macd = '--macd1 8 --macd2 21 --macdsig 5' # Some youtuber lol. Does well when crabbing. Otherwise meh
@@ -23,8 +24,8 @@ macd = '--macd1 9 --macd2 21 --macdsig 8' # Does even better when shorts are div
 
 atrdist = '--atrdist 5'
 # atrdist = '--atrdist 3'
-
 # atrdist = '--atrdist 13'
+
 # leverage = '--leverage 1'
 # leverage = '--leverage 3'
 # leverage = '--leverage 4'
@@ -78,20 +79,83 @@ rsi_lowerband = '--rsi_lowerband 49'
 # print("===== Short Bull (4 mths) =====")
 # os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
 print("===== Bear =====")
-os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
+os.system(f'python3 backtest.py {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
 print("===== Crab =====")
-os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
+os.system(f'python3 backtest.py {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
 print("===== Bull =====")
-os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
+os.system(f'python3 backtest.py {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
 print("===== All =====")
-os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+os.system(f'python3 backtest.py {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 # print("===== Custom =====")
 # os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -v')
 
 # print("===== Multiple Runs =====")
-# os.system(f'python3 multiple_runs.py {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# os.system(f'python3 multiple_runs.py {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
+### Multiple runs 50% Cashperc
+# Weird stops, no parent transmit
++++++ Final Result +++++
+Avg SQN:  1.16
+Min SQN: -0.07
+Avg pnl:  29792.47
+Min pnl: -370.94 # NEGATIVE
+Avg trades:  27.73
+
+# NO Weird stops, no parent transmit
+PNL:
+    min: -370.94
+    max:  126661.41
+    avg:  29792.47
+    std:  27763.06
+SQN:
+    min: -0.07
+    max:  2.23
+    avg:  1.16
+    std:  0.55
+TRADES:
+    min:  19.00
+    max:  38.00
+    avg:  27.73
+    std:  4.80
+== 40%
++++++ Final Result +++++
+PNL:
+    min:  958.68
+    max:  73969.53
+    avg:  20627.68
+    std:  16103.78
+SQN:
+    min:  0.18
+    max:  2.25
+    avg:  1.26
+    std:  0.52
+TRADES:
+    min:  19.00
+    max:  36.00
+    avg:  26.82
+    std:  4.56
+
+# Weird stops, HAVE parent transmit
+PNL:
+    min:  2087.45
+    max:  126661.41
+    avg:  30805.87
+    std:  27224.98
+SQN:
+    min:  0.33
+    max:  2.23
+    avg:  1.22
+    std:  0.50
+TRADES:
+    min:  19.00
+    max:  36.00
+    avg:  27.36
+    std:  4.34
+  - No negative!
+  - Best
+
+
 ### CMF 
 cmf_upperband=range(2,9),
 cmf_lowerband=range(-20,-9),

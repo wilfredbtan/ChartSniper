@@ -1,6 +1,8 @@
 import backtrader as bt
 from Datasets import *
 from strategies import WfaStochMACD
+from Commissions import CommInfo_Futures_Perc
+from Sizers import PercValue
 
 def test_strategies(dataset, cash, period, parameter_sets):
     results = []
@@ -9,11 +11,13 @@ def test_strategies(dataset, cash, period, parameter_sets):
         results.append(result)
     return results
 
-def run_wfa(wfastrategy, dataset, fromdate, todate, cash, interval_params):
+def run_wfa(wfastrategy, dataset, fromdate, todate, cash, cashperc, interval_params):
     cerebro = bt.Cerebro(optreturn=False, quicknotify=True)
     cerebro.broker.set_shortcash(False)
     cerebro.broker.set_cash(cash)
-    cerebro.broker.setcommission(commission=0.00015, leverage=5)
+    futures_perc = CommInfo_Futures_Perc(commission=0.02, leverage=interval_params['leverage'])
+    cerebro.broker.addcommissioninfo(futures_perc)
+    cerebro.addsizer(PercValue, perc=cashperc, min_size=0.0001)
 
     dataname = DATASETS.get(dataset)
     data = bt.feeds.GenericCSVData(
@@ -33,7 +37,7 @@ def run_wfa(wfastrategy, dataset, fromdate, todate, cash, interval_params):
     )
 
     cerebro.adddata(data)
-    cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
+    # cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
 
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
@@ -52,11 +56,13 @@ def run_wfa(wfastrategy, dataset, fromdate, todate, cash, interval_params):
         'params': result.p.__dict__
     }
 
-def run_strategy(strategy, dataset, fromdate, todate, cash, **kwargs):
+def run_strategy(strategy, dataset, fromdate, todate, cash, cashperc, **kwargs):
     cerebro = bt.Cerebro(optreturn=False, quicknotify=True)
     cerebro.broker.set_shortcash(False)
     cerebro.broker.set_cash(cash)
-    cerebro.broker.setcommission(commission=0.00015, leverage=5)
+    futures_perc = CommInfo_Futures_Perc(commission=0.02, leverage=kwargs['leverage'])
+    cerebro.broker.addcommissioninfo(futures_perc)
+    cerebro.addsizer(PercValue, perc=cashperc, min_size=0.0001)
 
     dataname = DATASETS.get(dataset)
     data = bt.feeds.GenericCSVData(
@@ -76,7 +82,7 @@ def run_strategy(strategy, dataset, fromdate, todate, cash, **kwargs):
     )
 
     cerebro.adddata(data)
-    cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
+    # cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
 
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
