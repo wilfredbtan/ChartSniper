@@ -123,6 +123,9 @@ def parse_args(pargs=None):
     parser.add_argument('--plot', '-p', action='store_true',
                     help='Plot the read data')
 
+    parser.add_argument('--save', '-s', action='store_true',
+                    help='Save the trade logs and save to excel sheet')
+
     parser.add_argument(
         '-o', '--optimize',
         action='store_const',
@@ -135,14 +138,9 @@ def parse_args(pargs=None):
         '-d', '--debug',
         help="Print lots of debugging statements",
         action="store_const", dest="loglevel", const=logging.DEBUG,
-        default=logging.WARNING,
+        default=logging.INFO,
     )
-    parser.add_argument(
-        '-v', '--verbose',
-        help="Be verbose",
-        action="store_const", dest="loglevel", const=logging.INFO,
-    )
-    
+
     if pargs is not None:
         return parser.parse_args(pargs)
 

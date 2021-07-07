@@ -1,12 +1,17 @@
+import os
 import requests
 import pandas as pd
 from datetime import datetime
 from config import ENV, PRODUCTION, TELEGRAM
 from telegram_bot import Telegram_Bot
 
+def create_dir(name):
+    current_directory = os.getcwd()
+    directory = os.path.join(current_directory, name)
+    os.makedirs(directory, exist_ok=True)
+
 def get_formatted_datetime(unix, format='%Y-%m-%d %H:%M:%S'):
     return datetime.utcfromtimestamp(unix).strftime(format)
-
 
 def reverse_and_clean(input_name, output_name):
     # load csv and use row 0 as headers

@@ -1,23 +1,36 @@
+# import logging
 import sys
-import logging
 import time
-from datetime import datetime
 
 import backtrader as bt
 
+from datetime import datetime
+
+from MyLogger import get_formatted_logger
 from Sizers import PercValue, maxRiskSizer
 from Commissions import CommInfo_Futures_Perc
 from Parser import parse_args
 from Datasets import *
 from strategies import StochMACD, WfaStochMACD
-from utils import get_sqn, get_trade_analysis
+from utils import get_sqn, get_trade_analysis, create_dir
 from config import ENV, PRODUCTION
+
 
 def runstrat(args=None):
     args = parse_args(args)
 
+    if args.save:
+        create_dir("dev_logs")
+
+    logger = get_formatted_logger(
+        logger_name="chart_sniper", 
+        level=args.loglevel, 
+        save_directory="dev_logs",
+        should_save=args.save
+    )
+
     if ENV == PRODUCTION:
-        logging.warning("Running backtest in production mode!")
+        logger.warning("Running backtest in production mode!")
         sys.exit(-1) 
 
     # Need to disable the stdstats for optimization
@@ -171,9 +184,8 @@ def runstrat(args=None):
             reversal_sensitivity=args.reversal_sensitivity,
             reversal_lowerband=args.reversal_lowerband,
             reversal_upperband=args.reversal_upperband,
-            loglevel=args.loglevel,
             leverage=args.leverage,
-            # leverage=logging.INFO,
+            # leverage=logger.INFO,
             isWfa=False,
         )
 
@@ -182,15 +194,19 @@ def runstrat(args=None):
         cerebro.addobserver(bt.observers.Value)
 
         initial_value = cerebro.broker.getvalue()
-        print('Starting Portfolio Value: %.2f' % initial_value)
+        logger.info('Starting Portfolio Value: %.2f' % initial_value)
         result = cerebro.run()
 
-        # Print analyzers - results
         final_value = cerebro.broker.getvalue()
-        print('Final Portfolio Value: %.2f' % final_value)
-        print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
-        print(get_trade_analysis(result[0].analyzers.ta.get_analysis()))
-        print(get_sqn(result[0].analyzers.sqn.get_analysis()))
+        final_value_string = f'Final Portfolio Value: {final_value:.2f}'
+        profit_string = f'Profit {((final_value - initial_value) / initial_value * 100):.3f}%%'
+        ta_string = get_trade_analysis(result[0].analyzers.ta.get_analysis())
+        sqn_string = get_sqn(result[0].analyzers.sqn.get_analysis())
+
+        logger.info(final_value_string)
+        logger.info(profit_string)
+        logger.info(ta_string)
+        logger.info(sqn_string)
 
         sqn = result[0].analyzers.sqn.get_analysis()
         PnL = round(result[0].broker.get_value() - args.cash, 2)

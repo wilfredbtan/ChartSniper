@@ -1,8 +1,8 @@
+import logging
 import signal
 import collections
 import bisect
 import time
-import logging
 
 import backtrader as bt
 from datetime import timezone
@@ -12,12 +12,14 @@ from Indicators import StochasticRSI, MACD, MFI, CMF
 from config import PRODUCTION, SANDBOX, ENV
 from utils import send_telegram_message, get_formatted_datetime
 
+logger = logging.getLogger("chart_sniper")
+
 class StrategyBase(bt.Strategy):
 
     params = (
         ("leverage", 5),
-        ('loglevel', logging.WARNING),
-        ('isWfa', False)
+        ('isWfa', False),
+        ("default_loglevel", logging.DEBUG)
     )
 
     def handleInterrupt(self, sig, frame):
@@ -25,6 +27,7 @@ class StrategyBase(bt.Strategy):
         self.env.runstop()
 
     def __init__(self):
+
         signal.signal(signal.SIGINT, self.handleInterrupt)
         self.order = None
         self.status = "DISCONNECTED"
@@ -49,7 +52,7 @@ class StrategyBase(bt.Strategy):
 
     def notify_data(self, data, status, *args, **kwargs):
         self.status = data._getstatusname(status)
-        print("STATUS: ", self.status)
+        logger.info("STATUS: ", self.status)
         if status == "LIVE":
             self.log("LIVE DATA - Ready to trade")
         
@@ -84,8 +87,8 @@ class StrategyBase(bt.Strategy):
             if 'STOPLOSS' in order_name and order.ref in self.stop_orders:
                 # pprint(order.info)
                 if order.info.is_liquidable:
-                    txt = colored("============== LIQUIDABLE stoploss executed!!!! ==============", 'yellow')
-                    print(txt)
+                    txt = "============== LIQUIDABLE stoploss executed!!!! =============="
+                    logger.warn(txt)
                 del self.stop_orders[order.ref]
 
             if ENV == PRODUCTION:
@@ -117,7 +120,6 @@ class StrategyBase(bt.Strategy):
                             order.ccxt_order["average"],
                             order_cost,
                             datetime_str),
-                            level=logging.INFO,
                             send_telegram=True)
                             # No commission (fee) data available as at 12 June 2021
                         # print("BUY order id: ", order_id)
@@ -138,7 +140,6 @@ class StrategyBase(bt.Strategy):
                             order.ccxt_order["average"],
                             order.ccxt_order["cost"],
                             datetime_str),
-                            level=logging.INFO,
                             send_telegram=True)
                             # No commission (fee) data available as at 12 June 2021
                         # print("SELL order id: ", order_id)
@@ -158,29 +159,21 @@ class StrategyBase(bt.Strategy):
                               order.executed.size,
                               order.executed.price,
                               order.executed.value,
-                              order.executed.comm),
-                             level=logging.INFO)
+                              order.executed.comm))
                 else:  # Sell
                     self.log('SELL EXECUTED: %s, Amount: %.2f, Price: %.5f, Cost: %.5f, Comm %.5f' %
                              (order_name,
                               order.executed.size,
                               order.executed.price,
                               order.executed.value,
-                              order.executed.comm),
-                             level=logging.INFO)
+                              order.executed.comm))
                 
-            self.log_trade()
-
         elif order.status in [order.Canceled]:
-            self.log('Order Canceled: %s' % order_name, level=logging.INFO, send_telegram=True)
-            # print("Cancel order id: ", order.ccxt_order['id'])
-            self.log_trade()
+            self.log('Order Canceled: %s' % order_name, send_telegram=True)
         elif order.status in [order.Margin]:
-            self.log('Order Margin: %s' % order_name, level=logging.WARNING, send_telegram=True, color='red')
-            self.log_trade()
+            self.log('Order Margin: %s' % order_name, level=logging.WARNING, send_telegram=True)
         elif order.status in [order.Rejected]:
-            self.log('Order Rejected: %s' % order_name, level=logging.WARNING, send_telegram=True, color='red')
-            self.log_trade()
+            self.log('Order Rejected: %s' % order_name, level=logging.WARNING, send_telegram=True)
 
 
     def notify_trade(self, trade):
@@ -260,8 +253,8 @@ class StrategyBase(bt.Strategy):
 
     def sell_stop_loss(self, close, multiplier=1):
         # sell_order = self.sell(price=close, exectype=bt.Order.Limit, transmit=False)
-        # sell_order = self.sell(transmit=False)
-        sell_order = self.sell()
+        sell_order = self.sell(transmit=False)
+        # sell_order = self.sell()
         sell_order.addinfo(name="ENTRY SHORT Order")
 
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
@@ -277,8 +270,8 @@ class StrategyBase(bt.Strategy):
             size=sell_order.size, 
             price=stop_price, 
             stopPrice=stop_price,
-            # parent=sell_order, 
-            # transmit=True,
+            parent=sell_order, 
+            transmit=True,
             #Binance
             reduceOnly='true'
         )
@@ -289,8 +282,8 @@ class StrategyBase(bt.Strategy):
         
     def buy_stop_loss(self, close, multiplier=1):
         # buy_order = self.buy(price=close, exectype=bt.Order.Limit, transmit=False)
-        # buy_order = self.buy(transmit=False)
-        buy_order = self.buy()
+        buy_order = self.buy(transmit=False)
+        # buy_order = self.buy()
 
         # Kwargs do not work in bt-ccxt
         buy_order.addinfo(name="ENTRY LONG Order")
@@ -308,8 +301,8 @@ class StrategyBase(bt.Strategy):
             size=buy_order.size,
             price=stop_price,
             stopPrice=stop_price,
-            # parent=buy_order,
-            # transmit=True,
+            parent=buy_order,
+            transmit=True,
             #Binance
             reduceOnly='true'
         )
@@ -318,7 +311,9 @@ class StrategyBase(bt.Strategy):
         stop_order.addinfo(is_liquidable=is_liquidable)
         self.stop_orders[stop_order.ref] = stop_order
 
-    def log(self, txt, level=logging.DEBUG, send_telegram=False, color=None, dt=None):
+    # def log(self, txt, level=logging.DEBUG, send_telegram=False, color=None, dt=None):
+    def log(self, txt, send_telegram=False, color=None, dt=None):
+        level = self.p.default_loglevel
         log_txt = txt
         if color:
             log_txt = colored(txt, color)
@@ -326,25 +321,13 @@ class StrategyBase(bt.Strategy):
         dt = dt or self.datas[0].datetime.date(0)
         hh = self.datas[0].datetime.time()
 
-        logging.log(level, '%s %s, %s' % (dt.isoformat(), hh, log_txt))
+        logger.log(level, '%s %s, %s' % (dt.isoformat(), hh, log_txt))
 
         if send_telegram and ENV == PRODUCTION:
             telegram_txt = txt.replace(', ', '\n')
             # print("Telegram text: ", telegram_txt)
             send_telegram_message(telegram_txt)
     
-    def log_trade(self):
-        close = self.dataclose[0]
-        self.log('Close, %.2f' % close)
-        self.log("ATR: %.2f" % self.atr[0])
-        # self.log("mcross: %.2f" % self.mcross[0])
-        self.log('previous stoch RSI: %.2f' % self.stochrsi[-1])
-        self.log('current stoch RSI: %.2f' % self.stochrsi[0])
-        self.log('fastk: %.2f' % self.stochrsi.l.fastk[0])
-        self.log('fastd: %.2f' % self.stochrsi.l.fastd[0])
-        self.log("")
-    
-
     def log_profit(self, pnl, pnlcomm=None):
         color = 'red' if pnl < 0 else 'green'
         txt = 'OPERATION PROFIT: GROSS %.2f' % pnl
@@ -356,7 +339,7 @@ class StrategyBase(bt.Strategy):
         value = self.broker.getvalue()
         txt += f'\nPORTFOLIO VALUE: {value: .2f}'
 
-        self.log(txt, level=logging.INFO, send_telegram=True, color=color)
+        self.log(txt, send_telegram=True, color=color)
 
 
 class TESTBUY(StrategyBase):
@@ -389,8 +372,9 @@ class TESTBUY(StrategyBase):
 
         self.dataclose = self.datas[0].close
 
-        logging.basicConfig(level=self.p.loglevel, force=True)
-        logging.info("TEST BUY strategy activated")
+        activation_txt = "== TESTBUY strategy activated =="
+        logger.info(activation_txt)
+        send_telegram_message(activation_txt)
 
         self.bought_once = False
         self.sold_once = False
@@ -443,15 +427,15 @@ class TESTBUY(StrategyBase):
         print("LIVE NEXT")
 
         if self.position.size < 0:
-            self.log("buy in testbuy", color='yellow', level=logging.INFO)
+            self.log("buy in testbuy", color='yellow')
             self.close_and_cancel_stops()
             self.buy_stop_loss(close)
         elif self.position.size > 0:
-            self.log("sell in testbuy", color='yellow', level=logging.INFO)
+            self.log("sell in testbuy", color='yellow')
             self.close_and_cancel_stops()
             self.sell_stop_loss(close)
         else:
-            self.log("STARTING in testbuy", color='yellow', level=logging.INFO)
+            self.log("STARTING in testbuy", color='yellow')
             self.buy_stop_loss(close)
 
     
@@ -525,7 +509,10 @@ class StochMACD(StrategyBase):
     def __init__(self):
         StrategyBase.__init__(self)
 
-        logging.basicConfig(level=self.p.loglevel, force=True)
+        activation_txt = "== StochMACD strategy activated =="
+        logger.info(activation_txt)
+        send_telegram_message(activation_txt)
+
         self.dataclose = self.datas[0].close
         
         self.stop_order = None
@@ -780,7 +767,6 @@ class WfaStochMACD(StrategyBase):
 
     def __init__(self):
         StrategyBase.__init__(self)
-        logging.basicConfig(level=self.p.loglevel, force=True)
         self.dataclose = self.datas[0].close
         
         self.interval_index = 0

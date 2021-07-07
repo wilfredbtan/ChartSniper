@@ -1,0 +1,4 @@
+[32m2021-07-07 17:07:33[0m [1;30m[INFO][0m Starting Portfolio Value: 89574.00
+[32m2021-07-07 17:07:39[0m [1;30m[INFO][0m TEST BUY strategy activated
+[32m2021-07-07 17:07:41[0m [1;30m[DEBUG][0m [32m2021-07-07 09:07:00, [33mSTARTING in testbuy[0m[0m
+[32m2021-07-07 17:07:46[0m [1;30m[DEBUG][0m [32m2021-07-07 09:07:00, BUY EXECUTED: ENTRY LONG Order, Amount: 1.00, AvgPrice: 34705.4400, Cost: 34705.4400, Date: 07 Jul 2021 09:07:42[0m

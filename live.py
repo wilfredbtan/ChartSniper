@@ -1,4 +1,3 @@
-import sys
 import logging
 import time
 import datetime as dt
@@ -13,7 +12,8 @@ from config import EXCHANGE, BINANCE, ENV, PRODUCTION, SANDBOX, DEBUG
 # from config import KRAKEN, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 # from config import FTX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
 
-from utils import get_trade_analysis, get_sqn, send_telegram_message 
+from MyLogger import get_formatted_logger
+from utils import get_trade_analysis, get_sqn, send_telegram_message, create_dir
 
 from Sizers import PercValue
 from Commissions import CommInfo_Futures_Perc
@@ -21,13 +21,23 @@ from strategies import StochMACD, TESTBUY
 from Parser import parse_args
 from Datasets import *
 
+if ENV == PRODUCTION:  # Live trading with Binance
+    create_dir("prod_logs")
+
+logger = get_formatted_logger(
+    logger_name="chart_sniper", 
+    level=logging.INFO, 
+    save_directory="prod_logs", 
+    should_save=ENV==PRODUCTION
+)
 
 def main():
     cerebro = bt.Cerebro(quicknotify=True)
     cerebro.broker.set_shortcash(False)
+    leverage = 5
+    commission = 0.04
 
     if ENV == PRODUCTION:  # Live trading with Binance
-
         broker_config = {
             'apiKey': EXCHANGE.get("key"),
             'secret': EXCHANGE.get("secret"),
@@ -43,10 +53,11 @@ def main():
             exchange=EXCHANGE.get("name"),
             # Must have that currency available in order to trade it
             currency=COIN_REFER,
-            # symbol=f'{COIN_TARGET}{COIN_REFER}',
+            symbol=f'{COIN_TARGET}{COIN_REFER}',
             config=broker_config, 
             retries=5, 
             # debug=DEBUG,
+            debug=False,
             # For Bitfinex
             balance_type=EXCHANGE.get('derivatives', None),
             sandbox=SANDBOX
@@ -61,9 +72,6 @@ def main():
 
         # balance = store.exchange.fetch_balance({'type': 'margin'})
         # pprint(balance)
-
-        commission = 0.04
-        leverage = 5
 
         if EXCHANGE == BINANCE:
             commission = request_binance_api(store=store, symbol=market['id'], leverage=leverage)
@@ -134,6 +142,7 @@ def main():
 
     cashperc = 50
 
+    loglevel = logging.INFO if ENV == PRODUCTION else logging.DEBUG
     # Include Strategy
     # cerebro.addstrategy(
     #     StochMACD,
@@ -147,12 +156,11 @@ def main():
     #     reversal_lowerband=43,
     #     reversal_upperband=48,
     #     leverage=leverage,
-    #     loglevel=logging.INFO
+    #     default_loglevel=loglevel
     # )
 
-    cerebro.addstrategy(TESTBUY, leverage=leverage, loglevel=logging.INFO)
+    cerebro.addstrategy(TESTBUY, leverage=leverage, default_loglevel=loglevel)
 
-    print("Commission: ", commission)
     futures_perc = CommInfo_Futures_Perc(commission=commission, leverage=leverage)
     cerebro.broker.addcommissioninfo(futures_perc)
 
@@ -165,13 +173,20 @@ def main():
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()
-    # (initial_cash, initial_value) = cerebro.broker.get_wallet_balance(currency=COIN_REFER)
-    print('Starting Portfolio Value: %.2f' % initial_value)
+
     datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
+    chart_sniper_init_txt = "== Chart Sniper initialized =="
+    date_txt = f"Date: {datetime_str}"
+    starting_port_val_txt = f"Starting Portfolio Value: {initial_value: .2f}"
+
+    logger.info(chart_sniper_init_txt)
+    logger.info(date_txt)
+    logger.info(starting_port_val_txt)
+
     if ENV == PRODUCTION:
-        send_telegram_message("== Chart Sniper initialized ==")
-        send_telegram_message(f"Date: {datetime_str}")
-        send_telegram_message(f"Starting Portfolio Value: {initial_value: .2f}")
+        send_telegram_message(chart_sniper_init_txt)
+        send_telegram_message(date_txt)
+        send_telegram_message(starting_port_val_txt)
 
     result = cerebro.run()
 
@@ -183,16 +198,16 @@ def main():
     ta_string = get_trade_analysis(result[0].analyzers.ta.get_analysis())
     sqn_string = get_sqn(result[0].analyzers.sqn.get_analysis())
 
-    logging.info(final_value_string)
-    logging.info(profit_string)
-    logging.info(ta_string)
-    logging.info(sqn_string)
+    logger.info(final_value_string)
+    logger.info(profit_string)
+    logger.info(ta_string)
+    logger.info(sqn_string)
 
     if ENV == PRODUCTION:
         telegram_txt = f"```\n{final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string}```"
 
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
-        print("Chart Sniper finished by user on %s" % datetime_str)
+        logger.info("Chart Sniper finished by user on %s" % datetime_str)
         send_telegram_message(telegram_txt, parse_mode="Markdown")
         send_telegram_message("Bot finished by user on %s" % datetime_str)
 
@@ -282,7 +297,7 @@ def request_binance_api(store, symbol, leverage):
     has_open_orders = len(order_response) > 0
     if has_open_orders:
         txt = "== OPEN ORDERS NOT EXECUTED =="
-        print(colored(txt, 'red'))
+        logger.error(colored(txt, 'red'))
         if PRODUCTION:
             send_telegram_message(txt)
 
@@ -314,7 +329,7 @@ def request_binance_api(store, symbol, leverage):
     has_open_positions = len(position_response) > 0 and float(position_response[0]['entryPrice']) != 0
     if has_open_positions:
         txt = "== EXISTING POSITION NOT CLOSED == "
-        print(colored(txt, 'red'))
+        logger.error(colored(txt, 'red'))
         if PRODUCTION:
             send_telegram_message(txt)
     
@@ -328,7 +343,7 @@ if __name__ == "__main__":
         main()
     except Exception as err:
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
-        print("Chart Sniper finished with error: ", err)
+        logger.error("Chart Sniper finished with error: ", err)
         send_telegram_message(f"Bot finished with error: {err}\non {datetime_str}", parse_mode=None)
         raise
         # sys.exit(0)
