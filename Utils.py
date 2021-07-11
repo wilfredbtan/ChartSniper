@@ -10,7 +10,7 @@ def create_dir(name):
     directory = os.path.join(current_directory, name)
     os.makedirs(directory, exist_ok=True)
 
-def get_formatted_datetime(unix, format='%Y-%m-%d %H:%M:%S'):
+def get_formatted_datetime_str(unix, format='%Y-%m-%d %H:%M:%S'):
     return datetime.utcfromtimestamp(unix).strftime(format)
 
 def reverse_and_clean(input_name, output_name):
@@ -18,7 +18,7 @@ def reverse_and_clean(input_name, output_name):
     df = pd.read_csv(input_name, header = 0)
 
     df['unix'] = [x/1000 if x > 10000000000 else x for x in df['unix']]
-    dt = [get_formatted_datetime(x) for x in df['unix']]
+    dt = [get_formatted_datetime_str(x) for x in df['unix']]
 
     df.insert(loc=0, column='datetime', value=dt)
     df.drop_duplicates(subset='datetime', inplace=True)

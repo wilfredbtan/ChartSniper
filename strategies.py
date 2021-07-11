@@ -1,16 +1,18 @@
 import logging
+import math
 import signal
 import collections
 import bisect
 import time
-
 import backtrader as bt
-from datetime import timezone
+
+from datetime import timezone, datetime
 from pprint import pprint
 from termcolor import colored
 from Indicators import StochasticRSI, MACD, MFI, CMF
 from config import PRODUCTION, SANDBOX, ENV
-from utils import send_telegram_message, get_formatted_datetime
+from utils import send_telegram_message, get_formatted_datetime_str
+from CSVwriter import create_trades_csv, write_trade_to_csv
 
 logger = logging.getLogger("chart_sniper")
 
@@ -20,6 +22,8 @@ class StrategyBase(bt.Strategy):
         ("lp_buffer_mult", 50),
         ("leverage", 5),
         ('isWfa', False),
+        ("should_save", False),
+        ("filename", None),
         ("default_loglevel", logging.DEBUG)
     )
 
@@ -30,11 +34,16 @@ class StrategyBase(bt.Strategy):
     def __init__(self):
         self.logger = logging.getLogger("chart_sniper")
 
+        if self.p.should_save and self.p.filename is not None:
+            self.csv_filename = f'{self.p.filename}.csv'
+            create_trades_csv(self.csv_filename)
+
         signal.signal(signal.SIGINT, self.handleInterrupt)
         self.order = None
         self.status = "DISCONNECTED"
         # self.logged_order_ids = set()
         self.stop_orders = {}
+        self.trade_sizes = {}
 
         self.last_buy_cost = None
         self.last_sell_cost = None
@@ -96,7 +105,7 @@ class StrategyBase(bt.Strategy):
             if ENV == PRODUCTION:
                 datetime_int = int(order.ccxt_order["timestamp"])
                 datetime_int = datetime_int/1000 if datetime_int > 10000000000 else datetime_int
-                datetime_str = get_formatted_datetime(datetime_int, format='%d %b %Y %H:%M:%S')
+                datetime_str = get_formatted_datetime_str(datetime_int, format='%d %b %Y %H:%M:%S')
 
                 order_id = order.ccxt_order["id"]
                 order_cost = order.ccxt_order["cost"]
@@ -111,9 +120,9 @@ class StrategyBase(bt.Strategy):
                 #     self.logged_order_ids.add(order_id)
                 
                 # BINANCE
-                # if order.ccxt_order["info"]["status"] == 'FILLED':
+                if order.ccxt_order["info"]["status"] == 'FILLED':
                 # BITFINEX
-                if order.ccxt_order["filled"] == order.ccxt_order['amount']:
+                # if order.ccxt_order["filled"] == order.ccxt_order['amount']:
                     if order.isbuy():
                         self.log(
                             'BUY EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Date: %s' %
@@ -125,15 +134,21 @@ class StrategyBase(bt.Strategy):
                             send_telegram=True)
                             # No commission (fee) data available as at 12 June 2021
                         # print("BUY order id: ", order_id)
-                        if order_name == "CLOSE":
-                            pnl = self.last_sell_cost - order_cost  
-                            # print("===== NOTIFY_ORDER pnl")
-                            self.log_profit(pnl)
-                            # print("buy close broker cash")
-                            # print("cerebro cash", self.broker.cash)
-                        else:
-                            print("========= last_buy_cost", order_cost)
-                            self.last_buy_cost = order_cost
+                        # if order_name == "CLOSE":
+                        #     pnl = self.last_sell_cost - order_cost  
+                        #     # print("===== NOTIFY_ORDER pnl")
+                        #     self.log_profit(pnl)
+                        #     # print("buy close broker cash")
+                        #     # print("cerebro cash", self.broker.cash)
+                        # else:
+                        #     print("========= last_buy_cost", order_cost)
+                        #     self.last_buy_cost = order_cost
+                        
+                        if order.info.should_stop:
+                            self.submit_stop_for_buy(
+                                price=order.ccxt_order["average"],
+                                size=order.ccxt_order["amount"]
+                            )
                     else:
                         self.log(
                             'SELL EXECUTED: %s, Amount: %.2f, AvgPrice: %.4f, Cost: %.4f, Date: %s' %
@@ -145,15 +160,21 @@ class StrategyBase(bt.Strategy):
                             send_telegram=True)
                             # No commission (fee) data available as at 12 June 2021
                         # print("SELL order id: ", order_id)
-                        if order_name == "CLOSE":
-                            pnl = order_cost - self.last_buy_cost
-                            # print("===== NOTIFY_ORDER pnl")
-                            self.log_profit(pnl)
-                            # print("sell close broker cash")
-                            # print("cerebro cash", self.broker.cash)
-                        else:
-                            print("======= last_sell_cost", order_cost)
-                            self.last_sell_cost = order_cost 
+                        # if order_name == "CLOSE":
+                        #     pnl = order_cost - self.last_buy_cost
+                        #     # print("===== NOTIFY_ORDER pnl")
+                        #     self.log_profit(pnl)
+                        #     # print("sell close broker cash")
+                        #     # print("cerebro cash", self.broker.cash)
+                        # else:
+                        #     print("======= last_sell_cost", order_cost)
+                        #     self.last_sell_cost = order_cost 
+
+                        if order.info.should_stop:
+                            self.submit_stop_for_sell(
+                                price=order.ccxt_order["average"],
+                                size=order.ccxt_order["amount"]
+                            )
             else:
                 if order.isbuy():
                     self.log('BUY EXECUTED: %s, Amount: %.2f, Price: %.4f, Cost: %.4f, Comm %.2f' %
@@ -162,6 +183,12 @@ class StrategyBase(bt.Strategy):
                               order.executed.price,
                               order.executed.value,
                               order.executed.comm))
+
+                    if order.info.should_stop:
+                        self.submit_stop_for_buy(
+                            price=order.executed.price,
+                            size=order.executed.size
+                        )
                 else:  # Sell
                     self.log('SELL EXECUTED: %s, Amount: %.2f, Price: %.5f, Cost: %.5f, Comm %.5f' %
                              (order_name,
@@ -169,6 +196,12 @@ class StrategyBase(bt.Strategy):
                               order.executed.price,
                               order.executed.value,
                               order.executed.comm))
+
+                    if order.info.should_stop:
+                        self.submit_stop_for_sell(
+                            price=order.executed.price,
+                            size=order.executed.size
+                        )
                 
         elif order.status in [order.Canceled]:
             self.log('Order Canceled: %s' % order_name, send_telegram=True)
@@ -178,12 +211,55 @@ class StrategyBase(bt.Strategy):
             self.log('Order Rejected: %s' % order_name, level=logging.WARNING, send_telegram=True)
 
 
+    '''
+    Trade structure:
+        ref:28
+        data:<backtrader.feeds.csvgeneric.GenericCSVData object at 0x12182beb0>
+        tradeid:0
+        size:0.0
+        price:6309.0
+        value:0.0
+        commission:88.03578379161002
+        pnl:2210.5608340882
+        pnlcomm:2122.52505029659
+        justopened:False
+        isopen:False
+        isclosed:True
+        baropen:6063
+        dtopen:736978.5833333334
+        barclose:6755
+        dtclose:737007.4166666666
+        barlen:692
+        historyon:False
+        history:[]
+        status:2
+    '''
     def notify_trade(self, trade):
         if not trade.isclosed:
+            # Store size to refer to it when trade is closed
+            if trade.ref in self.trade_sizes:
+                self.trade_sizes[trade.ref] += trade.size
+            else:
+                self.trade_sizes[trade.ref] = trade.size
             return
-        # print("===== NOTIFY_TRADE pnl")
-        # print("notify_trade comminfo", self.broker.p.commission.p.__dict__)
-        self.log_profit(trade.pnl, trade.pnlcomm)
+
+        dtopen_float = trade.dtopen
+        dtclose_float = trade.dtclose
+        dtopen_str = trade.open_datetime().strftime('%Y-%m-%d %H:%M:%S')
+        dtclose_str = trade.close_datetime().strftime('%Y-%m-%d %H:%M:%S')
+        size = self.trade_sizes[trade.ref]
+        pnl = trade.pnl
+        pnlcomm = trade.pnlcomm
+        avg_open_price = trade.price
+        avg_close_price = (avg_open_price + pnl / size)
+        trade_data = [dtopen_float, dtclose_float, dtopen_str, dtclose_str, size, avg_open_price, avg_close_price, pnl, pnlcomm]
+
+        if self.p.should_save and self.p.filename is not None:
+            write_trade_to_csv(filename=self.csv_filename, trade_data=trade_data)
+
+        self.log_profit(pnl, pnlcomm)
+
+        del self.trade_sizes[trade.ref]
 
     def get_maintenance_margin_rate_and_amt(self, notional_value):
         '''
@@ -256,52 +332,36 @@ class StrategyBase(bt.Strategy):
                 self.cancel(self.stop_orders[oref])
             # print("Number of stop orders: ", len(self.stop_orders))
             self.stop_orders = {}
-
-    def sell_stop_loss(self, close, multiplier=1, **kwargs):
-        # sell_order = self.sell(price=close, exectype=bt.Order.Limit, transmit=False)
-        sell_order = self.sell(transmit=False, kwargs=kwargs)
-        # sell_order = self.sell()
+    
+    def sell_with_stop_loss(self, price, size=None, multiplier=1, **kwargs):
+        # sell_order = self.sell(size=size, transmit=False, kwargs=kwargs)
+        sell_order = self.sell(size=size, kwargs=kwargs)
         sell_order.addinfo(name="ENTRY SHORT Order")
+        sell_order.addinfo(should_stop=True)
+        # self.submit_stop_for_sell(price, size=sell_order.size, parent=sell_order)
 
+    def submit_stop_for_sell(self, price, size, parent=None):
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
-        stop_price = close + atrdist * self.atr[0]
+        stop_price = price + atrdist * self.atr[0]
 
-        # print(colored("==== SELL STOP LOSS ====", 'red'))
-        # print("stop price: ", stop_price)
-
-        lp = self.get_liquidation_price(side=-1, pos_size=sell_order.size, entry_price=close)
-        # lp_with_buffer = lp - self.atr[0] * 0.5
+        lp = self.get_liquidation_price(side=-1, pos_size=size, entry_price=price)
         lp_with_buffer = lp - self.atr[0] * self.p.lp_buffer_mult
         is_liquidable = lp_with_buffer < stop_price
         stop_price = min(stop_price, lp_with_buffer)
 
-        # print(colored(f"===== Sell LP: {lp}", 'red'))
-        # print(colored(f"===== Sell LP Wallet Balance: {self.broker.cash}", 'red'))
-        # print(colored(f"===== Sell LP Entry price: {close[0]}", 'red'))
-
-        # print("lp: ", lp)
-        # print("buffer: -", self.atr[0] * self.p.lp_buffer_mult)
-        # print("lp with buffer: ", lp_with_buffer)
-        # print("final", stop_price)
-        # if is_liquidable:
-        #     print(colored("Is liquidable SELL stop loss (lp_with buffer < initial stop_price)", 'yellow'))
-    
-        if (stop_price <= close):
-            print(colored("ILLEGAL SELL STOP. stop price lower than close", 'red'))
-            if (lp <= close):
+        if (stop_price <= price):
+            # print(colored("ILLEGAL SELL STOP. stop price lower than close", 'red'))
+            if (lp <= price):
                 print(colored("==== ILLEGAL SELL LP, must be below close", 'magenta'))
-            # print('close:', close)
-            # print("final stop price:", stop_price)
-            # print("lp:", lp)
             stop_price = lp
 
         stop_order = self.buy(
             exectype=bt.Order.StopLimit, 
-            size=sell_order.size, 
+            size=size, 
             price=stop_price, 
             stopPrice=stop_price,
-            parent=sell_order, 
-            transmit=True,
+            # parent=parent, 
+            # transmit=True,
             #Binance
             reduceOnly='true'
         )
@@ -309,61 +369,42 @@ class StrategyBase(bt.Strategy):
         stop_order.addinfo(name="STOPLOSS for SHORT")
         stop_order.addinfo(is_liquidable=is_liquidable)
         self.stop_orders[stop_order.ref] = stop_order
-        
-    def buy_stop_loss(self, close, multiplier=1, **kwargs):
-        # buy_order = self.buy(price=close, exectype=bt.Order.Limit, transmit=False)
-        buy_order = self.buy(transmit=False, kwargs=kwargs)
-        # buy_order = self.buy()
 
+        self.log(f'stop submitted for SELL, Amount: {size:.2f} Price: {stop_price: .4f}')
+
+        
+    def buy_with_stop_loss(self, price, size=None, multiplier=1, **kwargs):
+        # buy_order = self.buy(size=size, transmit=False, kwargs=kwargs)
+        buy_order = self.buy(size=size, kwargs=kwargs)
         # Kwargs do not work in bt-ccxt
         buy_order.addinfo(name="ENTRY LONG Order")
+        buy_order.addinfo(should_stop=True)
+        # self.submit_stop_for_buy(price, size=buy_order.size, parent=buy_order)
 
+    def submit_stop_for_buy(self, price, size, parent=None):
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
-        stop_price = close - atrdist * self.atr[0]
+        stop_price = price - atrdist * self.atr[0]
 
-        # print(colored("==== BUY STOP LOSS ====", 'green'))
-        # print("stop price: ", stop_price)
-
-        lp = self.get_liquidation_price(side=1, pos_size=buy_order.size, entry_price=close)
-
-        # print(colored(f"===== Buy LP: {lp}", 'green'))
-        # print(colored(f"===== Buy LP Wallet Balance: {self.broker.cash}", 'green'))
-        # print(colored(f"===== Buy LP Entry price: {close[0]}", 'green'))
-
-        # print("lp: ", lp)
+        lp = self.get_liquidation_price(side=1, pos_size=size, entry_price=price)
         # Liquidation price cannot be less than 0 for long
         lp = max(lp, 0)
-        # if lp == 0:
-        #     print("LP SET TO ZERO")
-
-        # print(colored(f"===== Adjusted Buy LP (for zero): {lp}", 'green'))
-
         lp_with_buffer = lp + self.atr[0] * self.p.lp_buffer_mult
         is_liquidable = lp_with_buffer > stop_price
         stop_price = max(stop_price, lp_with_buffer)
 
-        # print("buffer: +", self.atr[0] * self.p.lp_buffer_mult)
-        # print("lp with buffer: ", lp_with_buffer)
-        # print("final", stop_price)
-        # if is_liquidable:
-        #     print(colored("Is liquidable BUY stop loss (lp_with buffer > initial stop_price)", 'yellow'))
-
-        if (stop_price >= close):
-            print(colored("ILLEGAL BUY STOP. stop price higher than close", 'red'))
-            if (lp >= close):
+        if (stop_price >= price):
+            # print(colored("ILLEGAL BUY STOP. stop price higher than close", 'red'))
+            if (lp >= price):
                 print(colored("==== ILLEGAL BUY LP, must be below close", 'magenta'))
-            # print('close:', close)
-            # print("final stop price:", stop_price)
-            # print("lp:", lp)
             stop_price = lp
 
         stop_order = self.sell(
             exectype=bt.Order.StopLimit,
-            size=buy_order.size,
+            size=size,
             price=stop_price,
             stopPrice=stop_price,
-            parent=buy_order,
-            transmit=True,
+            # parent=parent,
+            # transmit=True,
             #Binance
             reduceOnly='true'
         )
@@ -371,6 +412,8 @@ class StrategyBase(bt.Strategy):
         stop_order.addinfo(name="STOPLOSS for LONG")
         stop_order.addinfo(is_liquidable=is_liquidable)
         self.stop_orders[stop_order.ref] = stop_order
+
+        self.log(f'stop submitted for BUY, Amount: {size:.2f} Price: {stop_price: .4f}')
 
     # def log(self, txt, level=logging.DEBUG, send_telegram=False, color=None, dt=None):
     def log(self, txt, level=None, send_telegram=False, color=None, dt=None):
@@ -441,9 +484,9 @@ class TESTBUY(StrategyBase):
         self.bought_once = False
         self.sold_once = False
 
-        # if SANDBOX != True:
-        #     print("Using a test strategy in production")
-        #     raise
+        if SANDBOX != True:
+            logger.warning("Using a test strategy in production")
+            raise
     
         self.macd = bt.indicators.MACD(self.data,
                                        period_me1=self.p.macd1,
@@ -474,7 +517,7 @@ class TESTBUY(StrategyBase):
         if self.position.size < 0:
             self.log("buy in testbuy", color='yellow')
             self.close_and_cancel_stops()
-            self.buy_stop_loss(close)
+            self.buy_with_stop_loss(close)
 
             # Bitfinex derivative market buy
             # self.buy_stop_loss(close, type="MARKET", lev=self.p.leverage)
@@ -484,7 +527,7 @@ class TESTBUY(StrategyBase):
         elif self.position.size > 0:
             self.log("sell in testbuy", color='yellow')
             self.close_and_cancel_stops()
-            self.sell_stop_loss(close)
+            self.sell_with_stop_loss(close)
 
             # Bitfinex derivative market sell
             # self.sell_stop_loss(close, type="MARKET", lev=self.p.leverage)
@@ -494,7 +537,7 @@ class TESTBUY(StrategyBase):
             # self.sell(type='market', lev=str(self.p.leverage))
         else:
             self.log("STARTING in testbuy", color='yellow')
-            self.buy_stop_loss(close)
+            self.buy_with_stop_loss(close)
 
             # Bitfinex derivative market buy
             # self.buy_stop_loss(close, type="MARKET", lev=self.p.leverage)
@@ -702,70 +745,60 @@ class StochMACD(StrategyBase):
             #     sizer_multiplier *= 1.1
 
         reversal_sensitivity = self.p.reversal_sensitivity
-        # should_stop_loss = True
-        # should_trade_on_reversal = True
-        # should_close_on_reversal = True
 
         # Need to sell
         if self.position.size > 0:
-            # if should_close_on_reversal:
             within_upperrange = currentStochRSI > self.p.reversal_upperband and currentStochRSI < self.p.stoch_upperband
+            did_reverse = (
+                self.stochrsi.l.fastk[-2] > self.stochrsi.l.fastd[-2] and
+                self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and
+                (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity
+            )
+
             if within_upperrange:
                 # If fast crosses slow downwards, trend reversal, sell
-                if (
-                    self.stochrsi.l.fastk[-2] > self.stochrsi.l.fastd[-2] and
-                    self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and
-                    (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity
-                    # and (rsi_should_buy)
-                    ):
-
+                if did_reverse:
                     self.close_and_cancel_stops()
                     self.log('INTERIM REVERSAL SELL, %.2f' % self.dataclose[0])
-                    self.sell_stop_loss(close, multiplier=sizer_multiplier)   
+                    self.sell_with_stop_loss(price=close, multiplier=sizer_multiplier)   
             
             if should_sell:
                 if not within_upperrange:
                     self.close_and_cancel_stops()
-                # else:
-                #     print(colored("===== DOUBLE SELL", 'yellow'))
-                # self.close_and_cancel_stops()
                 self.log('REVERSAL SELL, %.2f' % self.dataclose[0])
-                self.sell_stop_loss(close, multiplier=sizer_multiplier)
+                self.sell_with_stop_loss(price=close, multiplier=sizer_multiplier)
                
         # Need to buy
         elif self.position.size < 0:
-            # if should_close_on_reversal:
             within_lowerrange = currentStochRSI > self.p.stoch_lowerband and currentStochRSI < self.p.reversal_lowerband
+            did_reverse = (
+                self.stochrsi.l.fastk[-2] < self.stochrsi.l.fastd[-2] and
+                self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and
+                (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity
+            )
+
             if within_lowerrange:
                 # If fast crosses slow upwards, trend reversal, buy
-                if (
-                    self.stochrsi.l.fastk[-2] < self.stochrsi.l.fastd[-2] and
-                    self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and 
-                    (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity
-                    # and (rsi_should_sell)
-                ):
+                if did_reverse:
                     self.close_and_cancel_stops()
                     self.log('INTERIM REVERSAL BUY, %.2f' % self.dataclose[0])
-                    self.buy_stop_loss(close, multiplier=sizer_multiplier)
+                    self.buy_with_stop_loss(price=close, multiplier=sizer_multiplier)
                     
             if should_buy:
                 if not within_lowerrange:
                     self.close_and_cancel_stops()
-                # else:
-                #     print(colored("===== DOUBLE BUY", 'yellow'))
-                # self.close_and_cancel_stops()
                 self.log('REVERSAL BUY, %.2f' % self.dataclose[0])
-                self.buy_stop_loss(close, multiplier=sizer_multiplier)
+                self.buy_with_stop_loss(price=close, multiplier=sizer_multiplier)
                 
         # if self.position.size == 0:
         else:
             if should_buy:
                 self.log('BUY CREATE, %.2f' % self.dataclose[0])
-                self.buy_stop_loss(close, multiplier=sizer_multiplier)
+                self.buy_with_stop_loss(close, multiplier=sizer_multiplier)
 
             elif should_sell:
                 self.log('SELL CREATE, %.2f' % self.dataclose[0])
-                self.sell_stop_loss(close, multiplier=sizer_multiplier)
+                self.sell_with_stop_loss(close, multiplier=sizer_multiplier)
 
 
 class WfaStochMACD(StrategyBase):
@@ -1004,7 +1037,7 @@ class WfaStochMACD(StrategyBase):
                         self.close_and_cancel_stops()
                         if should_trade_on_reversal:
                             if should_stop_loss:
-                                self.sell_stop_loss(close, multiplier=sizer_multiplier)   
+                                self.sell_with_stop_loss(close, multiplier=sizer_multiplier)   
                             else:
                                 self.sell(name="ENTRY SHORT Order")
             
@@ -1012,7 +1045,7 @@ class WfaStochMACD(StrategyBase):
                 self.log('REVERSAL SELL, %.2f' % self.dataclose[0])
                 self.close_and_cancel_stops()
                 if should_stop_loss:
-                    self.sell_stop_loss(close, multiplier=sizer_multiplier)
+                    self.sell_with_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.sell(name="ENTRY SHORT Order")
                
@@ -1032,7 +1065,7 @@ class WfaStochMACD(StrategyBase):
                         self.close_and_cancel_stops()
                         if should_trade_on_reversal:
                             if should_stop_loss:
-                                self.buy_stop_loss(close, multiplier=sizer_multiplier)
+                                self.buy_with_stop_loss(close, multiplier=sizer_multiplier)
                             else:
                                 self.buy(name="ENTRY LONG Order")
                     
@@ -1040,7 +1073,7 @@ class WfaStochMACD(StrategyBase):
                 self.log('REVERSAL BUY, %.2f' % self.dataclose[0])
                 self.close_and_cancel_stops()
                 if should_stop_loss:                
-                    self.buy_stop_loss(close, multiplier=sizer_multiplier)
+                    self.buy_with_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.buy(name="ENTRY LONG Order")
                 
@@ -1048,7 +1081,7 @@ class WfaStochMACD(StrategyBase):
             if should_buy:
                 self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 if should_stop_loss:
-                    self.buy_stop_loss(close, multiplier=sizer_multiplier)
+                    self.buy_with_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.buy(name="ENTRY LONG Order")
             
@@ -1056,6 +1089,6 @@ class WfaStochMACD(StrategyBase):
             if should_sell:
                 self.log('SELL CREATE, %.2f' % self.dataclose[0])
                 if should_stop_loss:
-                    self.sell_stop_loss(close, multiplier=sizer_multiplier)
+                    self.sell_with_stop_loss(close, multiplier=sizer_multiplier)
                 else:
                     self.sell(name="ENTRY SHORT Order")

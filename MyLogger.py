@@ -2,7 +2,7 @@ import logging, coloredlogs
 from re import I
 from datetime import datetime
 
-def get_formatted_logger(logger_name, level, save_directory="dev_logs", should_save=False):
+def get_formatted_logger(logger_name, level, filename, should_save=False):
     logger = logging.getLogger(logger_name)
 
     log_format = "%(asctime)s [%(levelname)s] %(message)s"
@@ -30,19 +30,18 @@ def get_formatted_logger(logger_name, level, save_directory="dev_logs", should_s
         level=level,
         fmt=log_format,
         level_styles=LEVEL_STYLES,
-        field_styles=FIELD_STYLES
+        field_styles=FIELD_STYLES,
+        isatty=True
     )
 
     if should_save:
-        formatter = coloredlogs.ColoredFormatter(log_format)
-        datetime_str = datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
-        fh = logging.FileHandler(f"{save_directory}/{datetime_str}.log")
+        formatter = coloredlogs.ColoredFormatter(
+            fmt=log_format,
+            level_styles=LEVEL_STYLES,
+            field_styles=FIELD_STYLES,
+        )
+        fh = logging.FileHandler(f"{filename}.log")
         fh.setFormatter(formatter)
         logger.addHandler(fh)
-
-    # sh = logging.StreamHandler()
-    # sh.setLevel(level)
-    # sh.setFormatter(formatter)
-    # logger.addHandler(sh)
 
     return logger 

@@ -15,10 +15,14 @@ from strategies import StochMACD, WfaStochMACD
 from utils import get_sqn, get_trade_analysis, create_dir
 from config import ENV, PRODUCTION
 
+save_directory = "dev_logs"
+datetime_str = datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+filename = f'{save_directory}/{datetime_str}'
+
 logger = get_formatted_logger(
     logger_name="chart_sniper", 
     level=logging.CRITICAL,
-    save_directory="dev_logs",
+    filename=filename,
     should_save=False
 )
 
@@ -27,12 +31,12 @@ def main(args=None):
     args = parse_args(args)
 
     if args.save:
-        create_dir("dev_logs")
+        create_dir(save_directory)
 
     # logger = get_formatted_logger(
     #     logger_name="chart_sniper", 
     #     level=args.loglevel, 
-    #     save_directory="dev_logs",
+    #     filename=filename,
     #     should_save=args.save
     # )
 
@@ -46,7 +50,6 @@ def main(args=None):
     cerebro.broker.set_shortcash(False)
     cerebro.broker.set_cash(args.cash)
     cerebro.addsizer(PercValue, perc=args.cashperc, min_size=0.0001)
-    # cerebro.broker.setcommission(commission=0.00015, leverage=args.leverage)
     futures_perc = CommInfo_Futures_Perc(commission=0.04, leverage=args.leverage)
     cerebro.broker.addcommissioninfo(futures_perc)
 
@@ -96,13 +99,6 @@ def main(args=None):
 
     if args.optimize:
 
-        logger = get_formatted_logger(
-            logger_name="chart_sniper", 
-            level=logging.CRITICAL,
-            save_directory="dev_logs",
-            should_save=args.save
-        )
-
         cerebro.optstrategy(StochMACD, 
             # macd1=range(7, 15),
             # macd2=range(18, 26),
@@ -139,12 +135,13 @@ def main(args=None):
             leverage=5,
 
             # lp_buffer_mult=[x * 0.01 for x in range(100, 200)],
-            lp_buffer_mult=[x * 0.1 for x in range(100, 300)],
+            lp_buffer_mult=[x * 0.1 for x in range(0, 200)],
 
             isWfa=False,
         )
         
         cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
+        cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
 
         optimized_runs = cerebro.run()
 
@@ -153,7 +150,11 @@ def main(args=None):
         for run in optimized_runs:
             for strategy in run:
                 sqn = strategy.analyzers.sqn.get_analysis()
-                PnL = round(strategy.broker.get_value() - args.cash, 2)
+                ta = strategy.analyzers.ta.get_analysis()
+                # PnL = round(strategy.broker.get_value() - args.cash, 2)
+
+                PnL = round(ta.pnl.net.total, 2)
+
                 final_results_list.append(
                     [
                         sqn['sqn'],
@@ -205,6 +206,8 @@ def main(args=None):
             leverage=args.leverage,
             # leverage=logger.INFO,
             lp_buffer_mult=args.lp_buffer_mult,
+            should_save=args.save,
+            filename=filename,
             isWfa=False,
         )
 
@@ -242,7 +245,8 @@ def main(args=None):
                 result[0].p.rsi_lowerband,
                 result[0].p.reversal_lowerband,
                 result[0].p.reversal_upperband,
-                # result[0].p.leverage, 
+                result[0].p.leverage, 
+                result[0].p.lp_buffer_mult, 
             ]
         )
 

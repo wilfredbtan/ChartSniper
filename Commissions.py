@@ -9,4 +9,9 @@ class CommInfo_Futures_Perc(bt.CommInfoBase):
     )
 
     def _getcommission(self, size, price, pseudoexec):
-        return size * price * self.p.commission
+        # print("==== Get commision: ", abs(size * price * self.p.commission))
+        # print("size: ", size)
+        # print("price: ", price)
+        # print("self.p.commission: ", self.p.commission)
+        return abs(size * price * self.p.commission)
+        # return size * price * self.p.commission

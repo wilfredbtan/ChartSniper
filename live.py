@@ -18,15 +18,20 @@ from strategies import StochMACD, TESTBUY
 from Parser import parse_args
 from Datasets import *
 
+save_directory = "prod_logs"
 if ENV == PRODUCTION:  # Live trading with Binance
-    create_dir("prod_logs")
+    create_dir(save_directory)
 
-should_save_logs = False
+should_save = True
+
+datetime_str = dt.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+filename = f'{save_directory}/{datetime_str}'
+
 logger = get_formatted_logger(
     logger_name="chart_sniper", 
     level=logging.INFO, 
-    save_directory="prod_logs", 
-    should_save=should_save_logs
+    filename=filename,
+    should_save=should_save
 )
 
 def main():
@@ -35,7 +40,7 @@ def main():
     leverage = 5
     commission = 0.04
 
-    if should_save_logs:
+    if should_save:
         logger.info("Log saving enabled")
     else:
         logger.warning("Log saving disabled")
@@ -59,7 +64,7 @@ def main():
             symbol=f'{COIN_TARGET}{COIN_REFER}',
             config=broker_config, 
             retries=5, 
-            debug=DEBUG,
+            # debug=DEBUG,
             # For Bitfinex
             # balance_type=EXCHANGE.get('balance_type', None),
             sandbox=SANDBOX
@@ -103,10 +108,10 @@ def main():
             timeframe=bt.TimeFrame.Minutes,
             fromdate=hist_start_date,
             # compression=60,
-            # compression=1,
+            compression=5,
             # Max number of ticks before throttling occurs
-            # ohlcv_limit=999,
-            ohlcv_limit=500,
+            ohlcv_limit=999,
+            # ohlcv_limit=500,
             # Prevents loading partial data from incomplete candles
             drop_newest=True
         )
@@ -153,11 +158,19 @@ def main():
     #     reversal_lowerband=43,
     #     reversal_upperband=48,
     #     leverage=leverage,
-    #     lp_buffer_mult=1.54,
-    #     default_loglevel=loglevel
+    #     lp_buffer_mult=7.5,
+    #     default_loglevel=loglevel,
+    #     filename=filename,
+    #     should_save=should_save
     # )
 
-    cerebro.addstrategy(TESTBUY, leverage=leverage, default_loglevel=loglevel)
+    cerebro.addstrategy(
+        TESTBUY, 
+        leverage=leverage, 
+        filename=filename,
+        should_save=should_save,
+        default_loglevel=loglevel, 
+    )
 
     futures_perc = CommInfo_Futures_Perc(commission=commission, leverage=leverage)
     cerebro.broker.addcommissioninfo(futures_perc)

@@ -4,7 +4,6 @@ import time
 import datetime as dt
 
 from termcolor import colored
-from excelwriter import get_df_row, save_dataframe_to_excel
 from pprint import pprint
 from MyLogger import get_formatted_logger
 from Parser import parse_args
@@ -33,10 +32,14 @@ from strategies import StochMACD
 my_columns = ['In/Out', 'Start Date', 'End Date', 'SQN', 'Trades', 'PnL']
 rows = []
 
+save_directory = "dev_logs"
+datetime_str = dt.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+filename = f'{save_directory}/{datetime_str}'
+
 logger = get_formatted_logger(
     logger_name="chart_sniper", 
     level=logging.CRITICAL,
-    save_directory="mult_logs",
+    filename=filename,
     should_save=False
 )
 
@@ -58,8 +61,6 @@ def run_test(args=None):
 
     while (current_sample_date + relativedelta(months=+test_period) < end_sample_date):
         in_period = (current_sample_date, current_sample_date + relativedelta(months=+test_period))
-
-        param_names = ['sqn', 'trades', 'pnl', 'macd1', 'macd2', 'macdsig', 'atrdist', 'reversal_sensitivity']
 
         logger.debug(f"=== run period {in_period[0].date()} to {in_period[1].date()}")
 
@@ -90,6 +91,7 @@ def run_test(args=None):
             reversal_upperband=args.reversal_upperband,
             lp_buffer_mult=args.lp_buffer_mult,
             leverage=args.leverage,
+            should_save=False,
             isWfa=False
         )
 

@@ -63,23 +63,24 @@ rsi_lowerband = '--rsi_lowerband 49'
 # rsi_lowerband = '--rsi_lowerband 50'
 
 # lp_buffer_mult = '--lp_buffer_mult 1.54'
-lp_buffer_mult = '--lp_buffer_mult 7.5'
+lp_buffer_mult = '--lp_buffer_mult 6.5'
+# lp_buffer_mult = '--lp_buffer_mult 7.5'
 # lp_buffer_mult = '--lp_buffer_mult 8.5'
 # lp_buffer_mult = '--lp_buffer_mult 10'
-# lp_buffer_mult = '--lp_buffer_mult 10.4'
+# lp_buffer_mult = '--lp_buffer_mult 12.1'
 # lp_buffer_mult = '--lp_buffer_mult 9.2'
 
 # Optimization
 # print("===== Short Bull (4 mths) =====")
 # os.system(f'python3 backtest.py -o {short_bull_date}')
-# print("===== Bear =====")
-# os.system(f'python3 backtest.py -o {bear_date}')
-# print("===== Crab =====")
-# os.system(f'python3 backtest.py -o {crab_date}')
-# print("===== Bull =====")
-# os.system(f'python3 backtest.py -o {bull_date}')
-# print("===== All =====")
-# os.system(f'python3 backtest.py -o {all_hourly_date}')
+print("===== Bear =====")
+os.system(f'python3 backtest.py -o {bear_date}')
+print("===== Crab =====")
+os.system(f'python3 backtest.py -o {crab_date}')
+print("===== Bull =====")
+os.system(f'python3 backtest.py -o {bull_date}')
+print("===== All =====")
+os.system(f'python3 backtest.py -o {all_hourly_date}')
 # print("===== Test =====")
 # os.system(f'python3 backtest.py -o {date}')
 
@@ -97,15 +98,15 @@ lp_buffer_mult = '--lp_buffer_mult 7.5'
 # print("===== Custom =====")
 # os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
 
-print("===== Multiple Runs =====")
+# print("===== Multiple Runs =====")
 # os.system(f'python3 multiple_runs.py {lp_buffer_mult} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
-buffer_mult_range = [1.54, 7.5, 9.2, 10.4]
-buffer_mult_range = [x * 0.1 for x in range(70, 80)]
-for b in buffer_mult_range:
-    buf_arg = f'--lp_buffer_mult {b}'
-    print(buf_arg)
-    os.system(f'python3 multiple_runs.py {buf_arg} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# buffer_mult_range = [1.54, 7.5, 9.2, 10.4]
+# buffer_mult_range = [x * 0.1 for x in range(60, 70)]
+# for b in buffer_mult_range:
+#     buf_arg = f'--lp_buffer_mult {b}'
+#     print(buf_arg)
+#     os.system(f'python3 multiple_runs.py {buf_arg} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
 ### Multiple run LP_BUFFER = [x * 0.1 for x in range(70, 80)]
@@ -309,6 +310,42 @@ lp_buffer_mult=[x * 0.1 for x in range(0, 300)],
 [1.6655751996422286, 6233543.39, 9.0]
 [1.6654414934906678, 6032167.44, 8.9]
 [1.6653019472952635, 5835142.55, 8.8]
+
+### FIXED (stop loss not below/above close AND stop loss set after order submitted) [self.broker.value]
+lp_buffer_mult=[x * 0.1 for x in range(0, 200)],
+------ optimize based on PnL -------
+===== Bear =====
+[1.8465360964956747, 112554.78, 19.900000000000002]
+[1.8460449125094731, 112153.84, 19.8]
+[1.845541257732617, 111752.89, 19.700000000000003]
+[1.845024912098283, 111351.94, 19.6]
+[1.8444956516940434, 110950.99, 19.5]
+--- 62.71393013000488 seconds ---
+===== Crab =====
+[1.3979656004203052, 33043.53, 13.600000000000001]
+[1.391955986881827, 32638.23, 13.5]
+[1.3858135296149492, 32234.85, 13.4]
+[1.379535871594831, 31833.41, 13.3]
+[1.3731206485713245, 31433.9, 13.200000000000001]
+--- 67.9794328212738 seconds ---
+===== Bull =====
+[1.509338760282926, 35864.04, 12.0]
+[1.5085532363614238, 35810.74, 0.0]
+[1.5085532363614238, 35810.74, 0.1]
+[1.5085532363614238, 35810.74, 0.2]
+[1.5085532363614238, 35810.74, 0.30000000000000004]
+--- 68.49380803108215 seconds ---
+===== All =====
+[1.6494252886698673, 5137181.68, 8.200000000000001]
+[1.6493882214210531, 5024897.97, 8.1]
+[1.6493498956918118, 4913852.55, 8.0]
+[1.6493102538196305, 4804045.41, 7.9]
+[1.6492692347983264, 4695476.56, 7.800000000000001]
+
+
+
+
+
 
 
 ### Multiple runs 50% Cashperc

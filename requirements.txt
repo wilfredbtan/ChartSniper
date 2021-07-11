@@ -3,7 +3,6 @@ python-telegram-bot
 backtrader
 ccxt
 git+https://github.com/wilfredbtan/bt-ccxt-store.git
-xlsxwriter
 pandas
 termcolor
 coloredlogs

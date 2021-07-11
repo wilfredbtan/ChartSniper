@@ -36,13 +36,9 @@ class PercValue(bt.Sizer):
     )
 
     def _getsizing(self, comminfo, cash, data, isbuy):
-        if isbuy:
-            size = self.broker.getvalue()  * (self.p.perc / 100) * comminfo.p.leverage / data[0]
-            size = max(size , 0.0001)
-        else:
-            size = -1 * self.broker.getvalue()  * (self.p.perc / 100) * comminfo.p.leverage / data[0]
-            size = min(size , 0.0001)
-
+        # size = self.broker.getvalue() * (self.p.perc / 100) * comminfo.p.leverage / data[0]
+        size = self.broker.getvalue() * (self.p.perc / 100) * comminfo.p.leverage / data[0]
+        size = max(size , 0.0001)
         return size
 
 class maxRiskSizer(bt.Sizer):
