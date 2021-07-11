@@ -7,10 +7,7 @@ from pprint import pprint
 from termcolor import colored
 
 from ccxtbt import CCXTStore, CCXTFeed
-from config import EXCHANGE, BINANCE, ENV, PRODUCTION, SANDBOX, DEBUG
-# from config import BITFINEX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
-# from config import KRAKEN, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
-# from config import FTX, ENV, PRODUCTION, SANDBOX, COIN_TARGET, COIN_REFER, DEBUG
+from config import EXCHANGE, BINANCE, BITFINEX, ENV, PRODUCTION, SANDBOX, DEBUG
 
 from MyLogger import get_formatted_logger
 from utils import get_trade_analysis, get_sqn, send_telegram_message, create_dir
@@ -24,11 +21,12 @@ from Datasets import *
 if ENV == PRODUCTION:  # Live trading with Binance
     create_dir("prod_logs")
 
+should_save_logs = False
 logger = get_formatted_logger(
     logger_name="chart_sniper", 
     level=logging.INFO, 
     save_directory="prod_logs", 
-    should_save=ENV==PRODUCTION
+    should_save=should_save_logs
 )
 
 def main():
@@ -36,6 +34,11 @@ def main():
     cerebro.broker.set_shortcash(False)
     leverage = 5
     commission = 0.04
+
+    if should_save_logs:
+        logger.info("Log saving enabled")
+    else:
+        logger.warning("Log saving disabled")
 
     if ENV == PRODUCTION:  # Live trading with Binance
         broker_config = {
@@ -56,10 +59,9 @@ def main():
             symbol=f'{COIN_TARGET}{COIN_REFER}',
             config=broker_config, 
             retries=5, 
-            # debug=DEBUG,
-            debug=False,
+            debug=DEBUG,
             # For Bitfinex
-            balance_type=EXCHANGE.get('derivatives', None),
+            # balance_type=EXCHANGE.get('balance_type', None),
             sandbox=SANDBOX
         )
 
@@ -77,15 +79,7 @@ def main():
             commission = request_binance_api(store=store, symbol=market['id'], leverage=leverage)
 
         broker_mapping = {
-            'order_types': {
-                bt.Order.Market: 'market',
-                bt.Order.Limit: 'limit',
-                bt.Order.StopLimit: 'stop_market',
-                # Bitfinex
-                # bt.Order.Market: 'MARKET',
-                # bt.Order.Limit: 'LIMIT',
-                # bt.Order.StopLimit: 'STOP LIMIT'
-            },
+            'order_types': EXCHANGE.get("order_type_mapping"),
             'mappings': {
                 'closed_order': {
                     'key': 'status',
@@ -111,9 +105,10 @@ def main():
             # compression=60,
             # compression=1,
             # Max number of ticks before throttling occurs
-            ohlcv_limit=999,
+            # ohlcv_limit=999,
+            ohlcv_limit=500,
             # Prevents loading partial data from incomplete candles
-            # drop_newest=True
+            drop_newest=True
         )
 
         # Add the feed
@@ -138,11 +133,13 @@ def main():
         )
         cerebro.adddata(data)
         broker = cerebro.getbroker()
-        broker.setcash(5000.0)
+        # broker.setcash(5000.0)
+        broker.setcash(1000.0)
 
     cashperc = 50
 
     loglevel = logging.INFO if ENV == PRODUCTION else logging.DEBUG
+
     # Include Strategy
     # cerebro.addstrategy(
     #     StochMACD,
@@ -156,6 +153,7 @@ def main():
     #     reversal_lowerband=43,
     #     reversal_upperband=48,
     #     leverage=leverage,
+    #     lp_buffer_mult=1.54,
     #     default_loglevel=loglevel
     # )
 
@@ -168,8 +166,8 @@ def main():
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
-    # cerebro.addsizer(PercValue, perc=cashperc, min_size=0.0001)
-    cerebro.addsizer(bt.sizers.FixedSize, stake=1)
+    cerebro.addsizer(PercValue, perc=cashperc, min_size=0.0001)
+    # cerebro.addsizer(bt.sizers.FixedSize, stake=1)
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()

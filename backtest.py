@@ -1,4 +1,4 @@
-# import logging
+import logging
 import sys
 import time
 
@@ -15,19 +15,26 @@ from strategies import StochMACD, WfaStochMACD
 from utils import get_sqn, get_trade_analysis, create_dir
 from config import ENV, PRODUCTION
 
+logger = get_formatted_logger(
+    logger_name="chart_sniper", 
+    level=logging.CRITICAL,
+    save_directory="dev_logs",
+    should_save=False
+)
 
-def runstrat(args=None):
+def main(args=None):
+    global logger
     args = parse_args(args)
 
     if args.save:
         create_dir("dev_logs")
 
-    logger = get_formatted_logger(
-        logger_name="chart_sniper", 
-        level=args.loglevel, 
-        save_directory="dev_logs",
-        should_save=args.save
-    )
+    # logger = get_formatted_logger(
+    #     logger_name="chart_sniper", 
+    #     level=args.loglevel, 
+    #     save_directory="dev_logs",
+    #     should_save=args.save
+    # )
 
     if ENV == PRODUCTION:
         logger.warning("Running backtest in production mode!")
@@ -80,15 +87,22 @@ def runstrat(args=None):
     #     headers=True,
     # )
 
-
     # https://www.backtrader.com/docu/data-multitimeframe/data-multitimeframe/
     #  data with the smallest timeframe (and thus the larger number of bars) must be the 1st one to be added to the Cerebro instance
     # cerebro.resampledata(data2, timeframe=bt.TimeFrame.Minutes, compression=15)
     # cerebro.resampledata(data2, timeframe=bt.TimeFrame.Minutes, compression=60)
     cerebro.adddata(data)
-    cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
+    # cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=240)
 
     if args.optimize:
+
+        logger = get_formatted_logger(
+            logger_name="chart_sniper", 
+            level=logging.CRITICAL,
+            save_directory="dev_logs",
+            should_save=args.save
+        )
+
         cerebro.optstrategy(StochMACD, 
             # macd1=range(7, 15),
             # macd2=range(18, 26),
@@ -101,11 +115,11 @@ def runstrat(args=None):
             # macd2=16,
             # macdsig=5,
 
-            # atrdist=range(1,10),
+            # atrdist=range(1,15),
             atrdist=5,
 
-            reversal_sensitivity=range(5, 20),
-            # reversal_sensitivity=17,
+            # reversal_sensitivity=range(5, 20),
+            reversal_sensitivity=17,
 
             # rsi_upperband=range(40,55),
             # rsi_lowerband=range(40,55),
@@ -123,6 +137,9 @@ def runstrat(args=None):
             # leverage=args.leverage,
             # leverage=(1,125),
             leverage=5,
+
+            # lp_buffer_mult=[x * 0.01 for x in range(100, 200)],
+            lp_buffer_mult=[x * 0.1 for x in range(100, 300)],
 
             isWfa=False,
         )
@@ -145,7 +162,7 @@ def runstrat(args=None):
                         # strategy.p.macd1, 
                         # strategy.p.macd2, 
                         # strategy.p.macdsig, 
-                        strategy.p.reversal_sensitivity, 
+                        # strategy.p.reversal_sensitivity, 
                         # strategy.p.reversal_lowerband,
                         # strategy.p.reversal_upperband,
                         # strategy.p.leverage, 
@@ -153,6 +170,7 @@ def runstrat(args=None):
                         # strategy.p.rsi_lowerband,
                         # strategy.p.cmf_upperband,
                         # strategy.p.cmf_lowerband,
+                        strategy.p.lp_buffer_mult,
                     ]
                 )
         sort_by_analyzer = sorted(final_results_list, key=lambda x: x[0], reverse=True)
@@ -186,6 +204,7 @@ def runstrat(args=None):
             reversal_upperband=args.reversal_upperband,
             leverage=args.leverage,
             # leverage=logger.INFO,
+            lp_buffer_mult=args.lp_buffer_mult,
             isWfa=False,
         )
 
@@ -232,5 +251,5 @@ def runstrat(args=None):
 
 if __name__ == '__main__':
     start_time = time.time()
-    runstrat()
+    main()
     print("--- %s seconds ---" % (time.time() - start_time))

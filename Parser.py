@@ -116,6 +116,10 @@ def parse_args(pargs=None):
                         type=float, default=50.0,
                         help=('Threshold to consider a reversal buy', '< reversal_lowerband and > stoch_lowerband = buy'))
 
+    parser.add_argument('--lp_buffer_mult', required=False, action='store',
+                        type=float, default=1.5,
+                        help=('Multiplier to apply to buffer between LP and stop price'))
+
     parser.add_argument('--short_perc', required=False, action='store',
                         type=float, default=50,
                         help=('Percentage to short out of intended position'))

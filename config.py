@@ -1,4 +1,5 @@
 import os
+import backtrader as bt
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,7 +8,7 @@ PRODUCTION = "production"
 DEVELOPMENT = "development"
 
 SANDBOX = True
-ENV = os.getenv("ENVIRONMENT", PRODUCTION)
+ENV = os.getenv("ENVIRONMENT", DEVELOPMENT)
 DEBUG = True
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
@@ -30,11 +31,16 @@ TEST_BINANCE_FUTURE_API_KEY=os.environ.get("TEST_BINANCE_FUTURE_API_KEY")
 TEST_BINANCE_FUTURE_SECRET=os.environ.get("TEST_BINANCE_FUTURE_SECRET")
 
 BINANCE = {
-  "name": "binanceusdm",
-  "key": TEST_BINANCE_FUTURE_API_KEY,
-  "secret": TEST_BINANCE_FUTURE_SECRET,
-  "coin_target": "BTC",
-  "coin_refer": "USDT"
+    "name": "binanceusdm",
+    "key": TEST_BINANCE_FUTURE_API_KEY,
+    "secret": TEST_BINANCE_FUTURE_SECRET,
+    "coin_target": "BTC",
+    "coin_refer": "USDT",
+    "order_type_mapping": {
+        bt.Order.Market: 'market',
+        bt.Order.Limit: 'limit',
+        bt.Order.StopLimit: 'stop_market',
+    }
 }
 
 
@@ -51,12 +57,22 @@ TEST_BITFINEX_API_KEY=os.environ.get("TEST_BITFINEX_API_KEY")
 TEST_BITFINEX_SECRET=os.environ.get("TEST_BITFINEX_SECRET")
 
 BITFINEX = {
-  "name": "bitfinex2",
+  "name": "bitfinex",
   "key": TEST_BITFINEX_API_KEY,
   "secret": TEST_BITFINEX_SECRET,
   "coin_target": "TESTBTCF0",
   "coin_refer": "TESTUSDTF0",
-  "balance_type": "derivatives"
+  "balance_type": "derivatives",
+  "order_type_mapping": {
+      # V1
+      # bt.Order.Market: 'market',
+      # bt.Order.Limit: 'limit',
+      # bt.Order.StopLimit: 'stop'
+      # V2
+      bt.Order.Market: 'MARKET',
+      bt.Order.Limit: 'LIMIT',
+      bt.Order.StopLimit: 'STOP LIMIT'
+  }
 }
 
 '''
@@ -93,6 +109,7 @@ FTX = {
 
 
 EXCHANGE = BINANCE
+# EXCHANGE = BITFINEX
 
 TELEGRAM = {
   "chat_id": os.environ.get("TELEGRAM_CHAT_ID"),

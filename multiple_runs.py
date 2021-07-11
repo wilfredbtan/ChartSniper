@@ -1,3 +1,4 @@
+import logging
 import statistics
 import time
 import datetime as dt
@@ -5,6 +6,7 @@ import datetime as dt
 from termcolor import colored
 from excelwriter import get_df_row, save_dataframe_to_excel
 from pprint import pprint
+from MyLogger import get_formatted_logger
 from Parser import parse_args
 from dateutil.relativedelta import relativedelta
 from teststrategy import run_strategy
@@ -31,13 +33,20 @@ from strategies import StochMACD
 my_columns = ['In/Out', 'Start Date', 'End Date', 'SQN', 'Trades', 'PnL']
 rows = []
 
+logger = get_formatted_logger(
+    logger_name="chart_sniper", 
+    level=logging.CRITICAL,
+    save_directory="mult_logs",
+    should_save=False
+)
+
 def run_test(args=None):
     args = parse_args(args)
 
     test_period = 12
     step = 1
-    start_sample_date = dt.datetime(2017,9,1)
-    end_sample_date = dt.datetime(2021,6,1)
+    start_sample_date = dt.datetime(2017,9,15)
+    end_sample_date = dt.datetime(2021,6,15)
     current_sample_date = start_sample_date
     dataset = 'btc_hourly'
     cash = 5000
@@ -46,20 +55,13 @@ def run_test(args=None):
     sqns = []
     pnls = []
     trades = []
-    # total_sqn = 0
-    # total_pnl = 0
-    # total_trades = 0
-    # min_sqn = float("inf")
-    # min_pnl = float("inf")
-    # max_sqn = float("inf")
-    # max_pnl = float("inf")
 
     while (current_sample_date + relativedelta(months=+test_period) < end_sample_date):
         in_period = (current_sample_date, current_sample_date + relativedelta(months=+test_period))
 
         param_names = ['sqn', 'trades', 'pnl', 'macd1', 'macd2', 'macdsig', 'atrdist', 'reversal_sensitivity']
 
-        print(f"=== run period {in_period[0].date()} to {in_period[1].date()}")
+        logger.debug(f"=== run period {in_period[0].date()} to {in_period[1].date()}")
 
         result = run_strategy(
             strategy=StochMACD, 
@@ -86,30 +88,23 @@ def run_test(args=None):
             reversal_sensitivity=args.reversal_sensitivity,
             reversal_lowerband=args.reversal_lowerband,
             reversal_upperband=args.reversal_upperband,
-            loglevel=args.loglevel,
+            lp_buffer_mult=args.lp_buffer_mult,
             leverage=args.leverage,
             isWfa=False
         )
 
-        print("==== results =====")
+        logger.debug("==== results =====")
         sqn = result['sqn']
-        print(f"sqn: {sqn}")
+        logger.debug(f"sqn: {sqn}")
 
         pnl = result['pnl']
         pnl_txt = f'pnl: {pnl}'
         if result['pnl'] < 0:
             pnl_txt = colored(pnl_txt, 'red')
-        print(pnl_txt)
-        print(f"trades: {result['trades']}")
+        logger.debug(pnl_txt)
+        logger.debug(f"trades: {result['trades']}")
         # print("params", result['params'].__dict__)
 
-        # total_sqn += sqn
-        # total_pnl += pnl
-        # total_trades += result['trades']
-        # min_sqn = min(min_sqn, sqn)
-        # min_pnl = min(min_pnl, pnl)
-        # max_sqn = max(max_sqn, sqn)
-        # max_pnl = max(max_pnl, pnl)
         sqns.append(sqn)
         pnls.append(pnl)
         trades.append(result['trades'])
@@ -154,4 +149,4 @@ def run_test(args=None):
 if __name__ == '__main__':
     start_time = time.time()
     run_test()
-    print("--- %s seconds ---" % (time.time() - start_time))
+    logger.debug("--- %s seconds ---" % (time.time() - start_time))

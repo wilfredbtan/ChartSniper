@@ -9,6 +9,8 @@ all_minute_date='--fromdate 2019-9-9 --todate 2021-6-9'
 # hourly range
 all_hourly_date='--fromdate 2017-8-18 --todate 2021-6-9'
 
+cash = '--cash 5000'
+
 cashperc = '--cashperc 50'
 
 # Buggy leverage
@@ -60,6 +62,12 @@ rsi_upperband = '--rsi_upperband 45'
 rsi_lowerband = '--rsi_lowerband 49'
 # rsi_lowerband = '--rsi_lowerband 50'
 
+# lp_buffer_mult = '--lp_buffer_mult 1.54'
+lp_buffer_mult = '--lp_buffer_mult 7.5'
+# lp_buffer_mult = '--lp_buffer_mult 8.5'
+# lp_buffer_mult = '--lp_buffer_mult 10'
+# lp_buffer_mult = '--lp_buffer_mult 10.4'
+# lp_buffer_mult = '--lp_buffer_mult 9.2'
 
 # Optimization
 # print("===== Short Bull (4 mths) =====")
@@ -77,66 +85,236 @@ rsi_lowerband = '--rsi_lowerband 49'
 
 # Individual tests
 # print("===== Short Bull (4 mths) =====")
-# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
+# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
 # print("===== Bear =====")
-# os.system(f'python3 backtest.py {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
+# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
 # print("===== Crab =====")
-# os.system(f'python3 backtest.py {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
+# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
 # print("===== Bull =====")
-# os.system(f'python3 backtest.py {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
-print("===== All =====")
-os.system(f'python3 backtest.py {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
+# print("===== All =====")
+# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 # print("===== Custom =====")
-# os.system(f'python3 backtest.py {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
+# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
 
-# print("===== Multiple Runs =====")
-# os.system(f'python3 multiple_runs.py {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+print("===== Multiple Runs =====")
+# os.system(f'python3 multiple_runs.py {lp_buffer_mult} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+
+buffer_mult_range = [1.54, 7.5, 9.2, 10.4]
+buffer_mult_range = [x * 0.1 for x in range(70, 80)]
+for b in buffer_mult_range:
+    buf_arg = f'--lp_buffer_mult {b}'
+    print(buf_arg)
+    os.system(f'python3 multiple_runs.py {buf_arg} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
-### Multiple runs 50% Cashperc
-# Weird stops, no parent transmit
+### Multiple run LP_BUFFER = [x * 0.1 for x in range(70, 80)]
+# BEST
+1st of each month
+--lp_buffer_mult 7.8
 +++++ Final Result +++++
-Avg SQN:  1.16
-Min SQN: -0.07
-Avg pnl:  29792.47
-Min pnl: -370.94 # NEGATIVE
-Avg trades:  27.73
-
-# NO Weird stops, no parent transmit
 PNL:
-    min: -370.94
+    min:  2327.51
     max:  126661.41
-    avg:  29792.47
-    std:  27763.06
+    avg:  34063.86
+    std:  29949.85
 SQN:
-    min: -0.07
+    min:  0.33
     max:  2.23
-    avg:  1.16
-    std:  0.55
+    avg:  1.29
+    std:  0.51
 TRADES:
     min:  19.00
-    max:  38.00
-    avg:  27.73
-    std:  4.80
-== 40%
+    max:  36.00
+    avg:  27.36
+    std:  4.34
+ - Anything below or above has a lower average PNL. SQNs are relatively the same
+
+15th of each month
+--lp_buffer_mult 7.9
+ILLEGAL SELL STOP. stop price lower than close
+- 1 illegal sell stop
 +++++ Final Result +++++
 PNL:
-    min:  958.68
-    max:  73969.53
-    avg:  20627.68
-    std:  16103.78
+    min:  2607.15
+    max:  121509.57
+    avg:  30168.68
+    std:  24979.88
 SQN:
-    min:  0.18
-    max:  2.25
+    min:  0.35
+    max:  2.28
     avg:  1.26
+    std:  0.49
+TRADES:
+    min:  18.00
+    max:  37.00
+    avg:  27.30
+    std:  4.37
+
+### Multiple run LP_BUFFER = [1.54, 7.5, 9.2, 10.4]
+--lp_buffer_mult 1.54
++++++ Final Result +++++
+PNL:
+    min:  1513.76
+    max:  126661.41
+    avg:  30237.27
+    std:  27049.11
+SQN:
+    min:  0.26
+    max:  2.23
+    avg:  1.20
     std:  0.52
 TRADES:
     min:  19.00
     max:  36.00
-    avg:  26.82
-    std:  4.56
+    avg:  27.36
+    std:  4.34
+--lp_buffer_mult 7.5
++++++ Final Result +++++
+PNL:
+    min:  2327.51
+    max:  126661.41
+    avg:  33608.08
+    std:  29507.70
+SQN:
+    min:  0.33
+    max:  2.23
+    avg:  1.28
+    std:  0.51
+TRADES:
+    min:  19.00
+    max:  36.00
+    avg:  27.36
+    std:  4.34
+--lp_buffer_mult 9.2
++++++ Final Result +++++
+PNL:
+    min:  2522.47
+    max:  130362.70
+    avg:  32949.31
+    std:  29506.43
+SQN:
+    min:  0.35
+    max:  2.23
+    avg:  1.28
+    std:  0.52
+TRADES:
+    min:  19.00
+    max:  35.00
+    avg:  27.24
+    std:  4.15
+--lp_buffer_mult 10.4
++++++ Final Result +++++
+PNL:
+    min: -4688.36   // NEGATIVE
+    max:  126661.41
+    avg:  27431.94
+    std:  28348.16
+SQN:
+    min: -0.67      // NEGATIVE
+    max:  2.23
+    avg:  1.03
+    std:  0.79
+TRADES:
+    min:  19.00
+    max:  36.00
+    avg:  27.36
+    std:  4.34
 
-# Weird stops, HAVE parent transmit
+### LP_BUFFER_MULT optimization [self.broker.cash]
+===== Bear =====
+[1.828262354020209, 106649.83, 4.9]
+[1.8273766602630874, 106252.95, 4.800000000000001]
+[1.8264740503951247, 105856.07, 4.7]
+[1.82555425084278, 105459.19, 4.6000000000000005]
+[1.8246169836698451, 105062.31, 4.5]
+
+===== Crab =====
+[1.050498065548794, 22691.32, 3.8000000000000003]
+[1.0472984571503063, 22459.1, 3.7]
+[1.0440416869695934, 22227.83, 3.6]
+[1.0407267011497372, 21997.52, 3.5]
+[1.0373524290950702, 21768.17, 3.4000000000000004]
+
+===== Bull =====
+[1.602988946593663, 43570.9, 1.8]
+[1.6000623943414471, 43264.52, 1.7000000000000002]
+[1.5970788064398056, 42958.13, 1.6]
+[1.5940370098146077, 42651.75, 1.5]
+[1.590935808031972, 42345.36, 1.4000000000000001]
+
+===== All =====
+[1.712561246496831, 2551996.11, 1.5]
+[1.711034893107466, 2536249.96, 1.4000000000000001]
+[1.7094677733237411, 2520503.81, 1.3]
+[1.707858905304888, 2504757.66, 1.2000000000000002]
+[1.7062072838389095, 2489011.51, 1.1]
+
+### [self.broker.value]
+lp_buffer_mult=[x * 0.1 for x in range(0, 200)],
+===== Bear =====
+[1.843673897978302, 128876.92, 18.2]
+[1.838701212859677, 126935.01, 18.1]
+[1.8335841363539305, 125011.63, 18.0]
+[1.8283188747968124, 123106.7, 17.900000000000002]
+[1.822901557353176, 121220.14, 17.8]
+
+===== Crab =====
+[1.41279790243275, 34472.9, 13.8]
+[1.406869860930418, 34051.24, 13.700000000000001]
+[1.4008081362647455, 33631.59, 13.600000000000001]
+[1.3946103125476348, 33213.94, 13.5]
+[1.3882739653037084, 32798.31, 13.4]
+
+===== Bull =====
+[1.5320716334643953, 37436.44, 0.0]
+[1.5320716334643953, 37436.44, 0.1]
+[1.5320716334643953, 37436.44, 0.2]
+[1.5320716334643953, 37436.44, 0.30000000000000004]
+[1.5320716334643953, 37436.44, 0.4]
+
+===== All =====
+[1.6671323320922486, 10243928.61, 10.4]
+[1.6669336792120624, 9672323.85, 10.3]
+[1.6668466767324304, 9307748.97, 10.200000000000001]
+[1.6667558555001782, 8953528.04, 10.100000000000001]
+[1.666661015393584, 8609463.15, 10.0]
+
+### FIXED (stop loss not below/above close) [self.broker.value]
+lp_buffer_mult=[x * 0.1 for x in range(0, 300)],
+===== Bear =====
+[1.8948760740098836, 121213.09, 20.3]
+[1.8925447482415114, 119870.91, 20.200000000000003]
+[1.8901332496493972, 118534.94, 20.1]
+[1.8876388016927466, 117205.17, 20.0]
+[1.8861783208410845, 116360.62, 19.900000000000002]
+
+===== Crab =====
+[1.41279790243275, 34472.9, 13.8]
+[1.406869860930418, 34051.24, 13.700000000000001]
+[1.4008081362647455, 33631.59, 13.600000000000001]
+[1.3946103125476348, 33213.94, 13.5]
+[1.3882739653037084, 32798.31, 13.4]
+
+===== Bull =====
+[1.7510858604041057, 69400.05, 18.5]
+[1.6977527206772407, 56533.74, 16.8]
+[1.6938552374375657, 55814.91, 16.7]
+[1.6898578540152327, 55100.3, 16.6]
+[1.6857577959942658, 54389.91, 16.5]
+
+===== All =====
+[1.6658262398559842, 6649538.46, 9.200000000000001]
+[1.665703357123872, 6439317.89, 9.1]
+[1.6655751996422286, 6233543.39, 9.0]
+[1.6654414934906678, 6032167.44, 8.9]
+[1.6653019472952635, 5835142.55, 8.8]
+
+
+### Multiple runs 50% Cashperc
+# self.broker.cash as liquidation
+# Higher value may be due to broker.cash being more conservative i.e. when a position is open
+# But broker.getvalue() is more accurate for the strategy
 PNL:
     min:  2087.45
     max:  126661.41
@@ -154,6 +332,24 @@ TRADES:
     std:  4.34
   - No negative!
   - Best
+
+# self.broker.value as liquidation
++++++ Final Result +++++
+PNL:
+    min:  1513.76
+    max:  126661.41
+    avg:  30237.27
+    std:  27049.11
+SQN:
+    min:  0.26
+    max:  2.23
+    avg:  1.20
+    std:  0.52
+TRADES:
+    min:  19.00
+    max:  36.00
+    avg:  27.36
+    std:  4.34
 
 
 ### CMF 

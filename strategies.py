@@ -17,6 +17,7 @@ logger = logging.getLogger("chart_sniper")
 class StrategyBase(bt.Strategy):
 
     params = (
+        ("lp_buffer_mult", 50),
         ("leverage", 5),
         ('isWfa', False),
         ("default_loglevel", logging.DEBUG)
@@ -27,6 +28,7 @@ class StrategyBase(bt.Strategy):
         self.env.runstop()
 
     def __init__(self):
+        self.logger = logging.getLogger("chart_sniper")
 
         signal.signal(signal.SIGINT, self.handleInterrupt)
         self.order = None
@@ -52,7 +54,7 @@ class StrategyBase(bt.Strategy):
 
     def notify_data(self, data, status, *args, **kwargs):
         self.status = data._getstatusname(status)
-        logger.info("STATUS: ", self.status)
+        logger.info(f"STATUS: {self.status}")
         if status == "LIVE":
             self.log("LIVE DATA - Ready to trade")
         
@@ -88,7 +90,7 @@ class StrategyBase(bt.Strategy):
                 # pprint(order.info)
                 if order.info.is_liquidable:
                     txt = "============== LIQUIDABLE stoploss executed!!!! =============="
-                    logger.warn(txt)
+                    logger.warning(txt)
                 del self.stop_orders[order.ref]
 
             if ENV == PRODUCTION:
@@ -190,7 +192,9 @@ class StrategyBase(bt.Strategy):
         ind = bisect.bisect_left(list(self.tier_dict.keys()), notional_value)
         return list(self.tier_dict.values())[ind]
     
+    # Calculation: https://www.binance.com/en/support/faq/b3c689c1f50a44cabb3a84e663b81d93
     def get_liquidation_price(self, side, pos_size, entry_price):
+        pos_size = abs(pos_size)
         (mmr, mma) = self.get_maintenance_margin_rate_and_amt(notional_value=pos_size * entry_price)
         # print("side: ", side)
         # print("pos_size: ", pos_size)
@@ -198,7 +202,9 @@ class StrategyBase(bt.Strategy):
         # print("Margin rate: ", mmr)
         # print("Margin amount: ", mma)
         # Wallet balance
-        wb = self.broker.cash
+        # Get value instead of cash as positions will only be reversed
+        # wb = self.broker.cash
+        wb = self.broker.getvalue()
         # Total maintenance margin. =0 if in isolated mode
         tmm = 0
         # Unrealized PNL of all other contracts. =0 if in isolated mode
@@ -212,7 +218,7 @@ class StrategyBase(bt.Strategy):
         # Direction of BOTH position, 1 as long position, -1 as short position
         side_BOTH = side
         # Absolute value of BOTH position size (one-way mode)
-        pos_BOTH = abs(pos_size)
+        pos_BOTH = pos_size
         # Entry price of BOTH position size (one-way mode)
         ep_BOTH = entry_price
         # Absolute value of LONG position size (hedge mode)
@@ -251,19 +257,43 @@ class StrategyBase(bt.Strategy):
             # print("Number of stop orders: ", len(self.stop_orders))
             self.stop_orders = {}
 
-    def sell_stop_loss(self, close, multiplier=1):
+    def sell_stop_loss(self, close, multiplier=1, **kwargs):
         # sell_order = self.sell(price=close, exectype=bt.Order.Limit, transmit=False)
-        sell_order = self.sell(transmit=False)
+        sell_order = self.sell(transmit=False, kwargs=kwargs)
         # sell_order = self.sell()
         sell_order.addinfo(name="ENTRY SHORT Order")
 
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
         stop_price = close + atrdist * self.atr[0]
 
+        # print(colored("==== SELL STOP LOSS ====", 'red'))
+        # print("stop price: ", stop_price)
+
         lp = self.get_liquidation_price(side=-1, pos_size=sell_order.size, entry_price=close)
-        lp_with_buffer = lp - self.atr[0] * 0.5
+        # lp_with_buffer = lp - self.atr[0] * 0.5
+        lp_with_buffer = lp - self.atr[0] * self.p.lp_buffer_mult
         is_liquidable = lp_with_buffer < stop_price
         stop_price = min(stop_price, lp_with_buffer)
+
+        # print(colored(f"===== Sell LP: {lp}", 'red'))
+        # print(colored(f"===== Sell LP Wallet Balance: {self.broker.cash}", 'red'))
+        # print(colored(f"===== Sell LP Entry price: {close[0]}", 'red'))
+
+        # print("lp: ", lp)
+        # print("buffer: -", self.atr[0] * self.p.lp_buffer_mult)
+        # print("lp with buffer: ", lp_with_buffer)
+        # print("final", stop_price)
+        # if is_liquidable:
+        #     print(colored("Is liquidable SELL stop loss (lp_with buffer < initial stop_price)", 'yellow'))
+    
+        if (stop_price <= close):
+            print(colored("ILLEGAL SELL STOP. stop price lower than close", 'red'))
+            if (lp <= close):
+                print(colored("==== ILLEGAL SELL LP, must be below close", 'magenta'))
+            # print('close:', close)
+            # print("final stop price:", stop_price)
+            # print("lp:", lp)
+            stop_price = lp
 
         stop_order = self.buy(
             exectype=bt.Order.StopLimit, 
@@ -280,9 +310,9 @@ class StrategyBase(bt.Strategy):
         stop_order.addinfo(is_liquidable=is_liquidable)
         self.stop_orders[stop_order.ref] = stop_order
         
-    def buy_stop_loss(self, close, multiplier=1):
+    def buy_stop_loss(self, close, multiplier=1, **kwargs):
         # buy_order = self.buy(price=close, exectype=bt.Order.Limit, transmit=False)
-        buy_order = self.buy(transmit=False)
+        buy_order = self.buy(transmit=False, kwargs=kwargs)
         # buy_order = self.buy()
 
         # Kwargs do not work in bt-ccxt
@@ -291,10 +321,41 @@ class StrategyBase(bt.Strategy):
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
         stop_price = close - atrdist * self.atr[0]
 
+        # print(colored("==== BUY STOP LOSS ====", 'green'))
+        # print("stop price: ", stop_price)
+
         lp = self.get_liquidation_price(side=1, pos_size=buy_order.size, entry_price=close)
-        lp_with_buffer = lp + self.atr[0] * 0.5
+
+        # print(colored(f"===== Buy LP: {lp}", 'green'))
+        # print(colored(f"===== Buy LP Wallet Balance: {self.broker.cash}", 'green'))
+        # print(colored(f"===== Buy LP Entry price: {close[0]}", 'green'))
+
+        # print("lp: ", lp)
+        # Liquidation price cannot be less than 0 for long
+        lp = max(lp, 0)
+        # if lp == 0:
+        #     print("LP SET TO ZERO")
+
+        # print(colored(f"===== Adjusted Buy LP (for zero): {lp}", 'green'))
+
+        lp_with_buffer = lp + self.atr[0] * self.p.lp_buffer_mult
         is_liquidable = lp_with_buffer > stop_price
         stop_price = max(stop_price, lp_with_buffer)
+
+        # print("buffer: +", self.atr[0] * self.p.lp_buffer_mult)
+        # print("lp with buffer: ", lp_with_buffer)
+        # print("final", stop_price)
+        # if is_liquidable:
+        #     print(colored("Is liquidable BUY stop loss (lp_with buffer > initial stop_price)", 'yellow'))
+
+        if (stop_price >= close):
+            print(colored("ILLEGAL BUY STOP. stop price higher than close", 'red'))
+            if (lp >= close):
+                print(colored("==== ILLEGAL BUY LP, must be below close", 'magenta'))
+            # print('close:', close)
+            # print("final stop price:", stop_price)
+            # print("lp:", lp)
+            stop_price = lp
 
         stop_order = self.sell(
             exectype=bt.Order.StopLimit,
@@ -312,8 +373,8 @@ class StrategyBase(bt.Strategy):
         self.stop_orders[stop_order.ref] = stop_order
 
     # def log(self, txt, level=logging.DEBUG, send_telegram=False, color=None, dt=None):
-    def log(self, txt, send_telegram=False, color=None, dt=None):
-        level = self.p.default_loglevel
+    def log(self, txt, level=None, send_telegram=False, color=None, dt=None):
+        level = self.p.default_loglevel if level is None else level
         log_txt = txt
         if color:
             log_txt = colored(txt, color)
@@ -321,7 +382,7 @@ class StrategyBase(bt.Strategy):
         dt = dt or self.datas[0].datetime.date(0)
         hh = self.datas[0].datetime.time()
 
-        logger.log(level, '%s %s, %s' % (dt.isoformat(), hh, log_txt))
+        self.logger.log(level, '%s %s, %s' % (dt.isoformat(), hh, log_txt))
 
         if send_telegram and ENV == PRODUCTION:
             telegram_txt = txt.replace(', ', '\n')
@@ -372,9 +433,10 @@ class TESTBUY(StrategyBase):
 
         self.dataclose = self.datas[0].close
 
-        activation_txt = "== TESTBUY strategy activated =="
-        logger.info(activation_txt)
-        send_telegram_message(activation_txt)
+        if ENV == PRODUCTION:
+            activation_txt = "== TESTBUY strategy activated =="
+            logger.info(activation_txt)
+            send_telegram_message(activation_txt)
 
         self.bought_once = False
         self.sold_once = False
@@ -401,25 +463,8 @@ class TESTBUY(StrategyBase):
                                    lowerband=self.p.stoch_lowerband)
 
     def next(self):
-        close = self.dataclose[0]
-        # print("Values: ")
-        # print("self.mcross[0]", self.mcross[0])
-        # print("self.stochrsi.l.fastk[-3]", self.stochrsi.l.fastk[-3])
-        # print("self.stochrsi.l.fastk[-2]", self.stochrsi.l.fastk[-2])
-        # print("self.stochrsi.l.fastk[-1]", self.stochrsi.l.fastk[-1])
-        # print("self.stochrsi.l.fastk[0]", self.stochrsi.l.fastk[0])
-        # print("")
-
-        # txt = list()
-        # txt.append('%04d' % len(self))
-        # dtfmt = '%Y-%m-%dT%H:%M:%S.%f'
-        # txt.append('%s' % self.data.datetime.datetime(0).strftime(dtfmt))
-        # txt.append('{}'.format(self.data.open[0]))
-        # txt.append('{}'.format(self.data.high[0]))
-        # txt.append('{}'.format(self.data.low[0]))
-        # txt.append('{}'.format(self.data.close[0]))
-        # txt.append('{}'.format(self.data.volume[0]))
-        # print(', '.join(txt))
+        close = self.datas[0].close
+        # print("d0 OHLC: ", self.datas[0].datetime.datetime(), self.datas[0].open[0], self.datas[0].high[0], self.datas[0].low[0], self.datas[0].close[0])
 
         if ENV == PRODUCTION and self.status != "LIVE":
             return
@@ -430,47 +475,33 @@ class TESTBUY(StrategyBase):
             self.log("buy in testbuy", color='yellow')
             self.close_and_cancel_stops()
             self.buy_stop_loss(close)
+
+            # Bitfinex derivative market buy
+            # self.buy_stop_loss(close, type="MARKET", lev=self.p.leverage)
+            # self.buy(type='MARKET', lev=self.p.leverage)
+            # Btifnex V1
+            # self.buy(type='market', lev=str(self.p.leverage))
         elif self.position.size > 0:
             self.log("sell in testbuy", color='yellow')
             self.close_and_cancel_stops()
             self.sell_stop_loss(close)
+
+            # Bitfinex derivative market sell
+            # self.sell_stop_loss(close, type="MARKET", lev=self.p.leverage)
+            # self.sell(type='MARKET', lev=self.p.leverage)
+
+            # Btifnex V1
+            # self.sell(type='market', lev=str(self.p.leverage))
         else:
             self.log("STARTING in testbuy", color='yellow')
             self.buy_stop_loss(close)
 
-    
-        # if self.position.size < 0 and not self.bought_once:
-        #     print("buy")
-        #     # self.buy(exectype=bt.Order.Limit, price=30000)
-        #     self.close_and_cancel_stops()
-        #     self.buy_stop_loss(close)
-        #     # self.buy()
-        #     # Bitfinex derivative market buy
-        #     # self.buy(type='MARKET', lev=self.p.leverage)
-        #     self.bought_once = True
+            # Bitfinex derivative market buy
+            # self.buy_stop_loss(close, type="MARKET", lev=self.p.leverage)
+            # self.buy(type='MARKET', lev=self.p.leverage)
 
-        # if self.position.size > 0 and not self.sold_once:
-        #     print("sell")
-        #     # self.sell(exectype=bt.Order.Limit, price=60000)
-        #     self.close_and_cancel_stops()
-        #     self.sell_stop_loss(close)
-        #     # self.sell()
-        #     # Bitfinex derivative market buy
-        #     # self.sell(type='MARKET', lev=self.p.leverage)
-        #     self.sold_once = True
-
-        # if self.position.size == 0:
-        #     print("SHOULD BUY")
-        #     self.close_and_cancel_stops()
-        #     self.buy_stop_loss(close)
-        #     # self.buy()
-        #     # Bitfinex derivative market buy
-        #     # self.buy(type='MARKET', lev=self.p.leverage)
-        #     # self.log('BUY CREATE, %.2f' % self.dataclose[0])
-
-        # if self.position.size != 0 and self.bought_once and self.sold_once:
-        #     self.close_and_cancel_stops()
-
+            # Btifnex V1
+            # self.buy(type='market', lev=str(self.p.leverage))
 
 class StochMACD(StrategyBase):
     # list of parameters which are configurable for the strategy
@@ -509,9 +540,10 @@ class StochMACD(StrategyBase):
     def __init__(self):
         StrategyBase.__init__(self)
 
-        activation_txt = "== StochMACD strategy activated =="
-        logger.info(activation_txt)
-        send_telegram_message(activation_txt)
+        if ENV == PRODUCTION:
+            activation_txt = "== StochMACD strategy activated =="
+            logger.info(activation_txt)
+            send_telegram_message(activation_txt)
 
         self.dataclose = self.datas[0].close
         
