@@ -5,6 +5,7 @@ import backtrader as bt
 
 from pprint import pprint
 from termcolor import colored
+from telegram import ParseMode
 
 from ccxtbt import CCXTStore, CCXTFeed
 from config import EXCHANGE, BINANCE, BITFINEX, ENV, PRODUCTION, SANDBOX, DEBUG
@@ -108,7 +109,7 @@ def main():
             timeframe=bt.TimeFrame.Minutes,
             fromdate=hist_start_date,
             # compression=60,
-            compression=5,
+            # compression=5,
             # Max number of ticks before throttling occurs
             ohlcv_limit=999,
             # ohlcv_limit=500,
@@ -219,7 +220,7 @@ def main():
 
         datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
         logger.info("Chart Sniper finished by user on %s" % datetime_str)
-        send_telegram_message(telegram_txt, parse_mode="Markdown")
+        send_telegram_message(telegram_txt, parse_mode=ParseMode.MARKDOWN)
         send_telegram_message("Bot finished by user on %s" % datetime_str)
 
 

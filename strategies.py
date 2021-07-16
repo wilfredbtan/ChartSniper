@@ -6,12 +6,13 @@ import bisect
 import time
 import backtrader as bt
 
+from telegram import ParseMode
 from datetime import timezone, datetime
 from pprint import pprint
 from termcolor import colored
 from Indicators import StochasticRSI, MACD, MFI, CMF
 from config import PRODUCTION, SANDBOX, ENV
-from utils import send_telegram_message, get_formatted_datetime_str
+from utils import send_telegram_message, get_formatted_datetime_str, get_trade_analysis
 from CSVwriter import create_trades_csv, write_trade_to_csv
 
 logger = logging.getLogger("chart_sniper")
@@ -27,9 +28,23 @@ class StrategyBase(bt.Strategy):
         ("default_loglevel", logging.DEBUG)
     )
 
-    def handleInterrupt(self, sig, frame):
+    def handle_sigint(self, sig, frame):
         print("SIGINT received")
+        # self.close_and_cancel_stops()
         self.env.runstop()
+    
+    def handle_sigusr1(self, sig, frame):
+        print("SIGUSR1 received")
+        # Portfolio value
+        # open positions (if any)
+        # Trade analysis?
+        value_string = f'Portfolio value: {self.broker.getvalue(): .2f}'
+        position_string = f'Postion:\n  Size: {self.position.size: .3f}\n  Price: {self.position.price}'
+        ta_string = get_trade_analysis(self.analyzers.ta.get_analysis())
+        txt = f'```\n{value_string}\n\n{position_string}\n\n{ta_string}```'
+        print(txt)
+        if ENV == PRODUCTION:
+            send_telegram_message(message=txt, parse_mode=ParseMode.MARKDOWN)
 
     def __init__(self):
         self.logger = logging.getLogger("chart_sniper")
@@ -38,7 +53,9 @@ class StrategyBase(bt.Strategy):
             self.csv_filename = f'{self.p.filename}.csv'
             create_trades_csv(self.csv_filename)
 
-        signal.signal(signal.SIGINT, self.handleInterrupt)
+        signal.signal(signal.SIGINT, self.handle_sigint)
+        signal.signal(signal.SIGUSR1, self.handle_sigusr1)
+
         self.order = None
         self.status = "DISCONNECTED"
         # self.logged_order_ids = set()
@@ -225,7 +242,7 @@ class StrategyBase(bt.Strategy):
         justopened:False
         isopen:False
         isclosed:True
-        baropen:6063
+        libaropen:6063
         dtopen:736978.5833333334
         barclose:6755
         dtclose:737007.4166666666
@@ -430,7 +447,7 @@ class StrategyBase(bt.Strategy):
         if send_telegram and ENV == PRODUCTION:
             telegram_txt = txt.replace(', ', '\n')
             # print("Telegram text: ", telegram_txt)
-            send_telegram_message(telegram_txt)
+            send_telegram_message(telegram_txt, parse_mode=ParseMode.MARKDOWN)
     
     def log_profit(self, pnl, pnlcomm=None):
         color = 'red' if pnl < 0 else 'green'
@@ -442,6 +459,8 @@ class StrategyBase(bt.Strategy):
         
         value = self.broker.getvalue()
         txt += f'\nPORTFOLIO VALUE: {value: .2f}'
+
+        txt = f'*{txt}*'
 
         self.log(txt, send_telegram=True, color=color)
 

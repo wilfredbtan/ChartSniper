@@ -8,10 +8,8 @@ PRODUCTION = "production"
 DEVELOPMENT = "development"
 
 SANDBOX = True
-ENV = os.getenv("ENVIRONMENT", DEVELOPMENT)
+ENV = os.getenv("ENVIRONMENT", PRODUCTION)
 DEBUG = True
-
-SECRET_KEY = os.environ.get("SECRET_KEY")
 
 '''
 BINANCE
