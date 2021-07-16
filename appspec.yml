@@ -1,13 +1,10 @@
 version: 0.0
 os: linux
 files:
-  - source: src
-    destination: src
+  - source: /
+    destination: /
 hooks:
   AfterInstall:
-    - location: scripts/change_permissions.sh
-      timeout: 300
-      runas: root
     - location: scripts/install_dependencies.sh
       timeout: 300
       runas: root
