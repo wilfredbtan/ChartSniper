@@ -109,7 +109,7 @@ def main():
             timeframe=bt.TimeFrame.Minutes,
             fromdate=hist_start_date,
             # compression=60,
-            # compression=5,
+            compression=5,
             # Max number of ticks before throttling occurs
             ohlcv_limit=999,
             # ohlcv_limit=500,
