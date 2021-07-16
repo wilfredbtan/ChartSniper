@@ -72,41 +72,41 @@ lp_buffer_mult = '--lp_buffer_mult 6.5'
 
 # Optimization
 # print("===== Short Bull (4 mths) =====")
-# os.system(f'python3 backtest.py -o {short_bull_date}')
+# os.system(f'python3 src/backtest.py -o {short_bull_date}')
 print("===== Bear =====")
-os.system(f'python3 backtest.py -o {bear_date}')
+os.system(f'python3 src/backtest.py -o {bear_date}')
 print("===== Crab =====")
-os.system(f'python3 backtest.py -o {crab_date}')
+os.system(f'python3 src/backtest.py -o {crab_date}')
 print("===== Bull =====")
-os.system(f'python3 backtest.py -o {bull_date}')
+os.system(f'python3 src/backtest.py -o {bull_date}')
 print("===== All =====")
-os.system(f'python3 backtest.py -o {all_hourly_date}')
+os.system(f'python3 src/backtest.py -o {all_hourly_date}')
 # print("===== Test =====")
-# os.system(f'python3 backtest.py -o {date}')
+# os.system(f'python3 src/backtest.py -o {date}')
 
 # Individual tests
 # print("===== Short Bull (4 mths) =====")
-# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
+# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
 # print("===== Bear =====")
-# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
+# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
 # print("===== Crab =====")
-# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
+# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
 # print("===== Bull =====")
-# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
+# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
 # print("===== All =====")
-# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 # print("===== Custom =====")
-# os.system(f'python3 backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
+# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
 
 # print("===== Multiple Runs =====")
-# os.system(f'python3 multiple_runs.py {lp_buffer_mult} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# os.system(f'python3 src/multiple_runs.py {lp_buffer_mult} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 # buffer_mult_range = [1.54, 7.5, 9.2, 10.4]
 # buffer_mult_range = [x * 0.1 for x in range(60, 70)]
 # for b in buffer_mult_range:
 #     buf_arg = f'--lp_buffer_mult {b}'
 #     print(buf_arg)
-#     os.system(f'python3 multiple_runs.py {buf_arg} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+#     os.system(f'python3 src/multiple_runs.py {buf_arg} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
 ### Multiple run LP_BUFFER = [x * 0.1 for x in range(70, 80)]
