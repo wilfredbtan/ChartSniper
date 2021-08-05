@@ -100,9 +100,13 @@ def main(args=None):
     if args.optimize:
 
         cerebro.optstrategy(StochMACD, 
-            macd1=range(5, 15),
-            macd2=range(10, 26),
-            macdsig=range(5, 15),
+            # macd1=range(7, 15),
+            # macd2=range(16, 25),
+            # macdsig=range(10, 11),
+            macd1=7,
+            macd2=21,
+            macdsig=11,
+
             # macd1=9,
             # macd2=21,
             # macdsig=8,
@@ -114,21 +118,25 @@ def main(args=None):
             # atrdist=range(1,15),
             atrdist=5,
 
-            reversal_sensitivity=range(10, 20),
-            # reversal_sensitivity=17,
+            # reversal_sensitivity=range(15, 20),
+            reversal_sensitivity=18,
 
-            # rsi_upperband=range(40,55),
-            # rsi_lowerband=range(40,55),
-            rsi_upperband=45,
-            rsi_lowerband=49,
+            rsi_lowerband=range(40,55),
+            rsi_upperband=range(40,55),
+            # rsi_lowerband=53,
+            # rsi_upperband=48,
+            # rsi_lowerband=49,
+            # rsi_upperband=45,
 
             # cmf_upperband=range(2,9),
             # cmf_lowerband=range(-20,-9),
 
-            # reversal_lowerband=range(40,53),
-            # reversal_upperband=range(45,55),
-            reversal_lowerband=43,
-            reversal_upperband=48,
+            # reversal_lowerband=range(40,55),
+            # reversal_upperband=range(40,55),
+            reversal_lowerband=44,
+            reversal_upperband=46,
+            # reversal_lowerband=43,
+            # reversal_upperband=48,
 
             # leverage=args.leverage,
             # leverage=(1,125),
@@ -153,8 +161,12 @@ def main(args=None):
                 sqn = strategy.analyzers.sqn.get_analysis()
                 ta = strategy.analyzers.ta.get_analysis()
                 # PnL = round(strategy.broker.get_value() - args.cash, 2)
-
-                PnL = round(ta.pnl.net.total, 2)
+                if (not ta.get("total") or 
+                    ta['total']['total'] == 0 or 
+                    not isinstance(ta.pnl.net.total, float)):
+                    PnL = "Invalid"
+                else:
+                    PnL = round(ta.pnl.net.total, 2)
 
                 final_results_list.append(
                     [
@@ -165,11 +177,11 @@ def main(args=None):
                         strategy.p.macd2, 
                         strategy.p.macdsig, 
                         strategy.p.reversal_sensitivity, 
-                        # strategy.p.reversal_lowerband,
-                        # strategy.p.reversal_upperband,
                         # strategy.p.leverage, 
-                        # strategy.p.rsi_upperband,
-                        # strategy.p.rsi_lowerband,
+                        strategy.p.rsi_lowerband,
+                        strategy.p.rsi_upperband,
+                        strategy.p.reversal_lowerband,
+                        strategy.p.reversal_upperband,
                         # strategy.p.cmf_upperband,
                         # strategy.p.cmf_lowerband,
                         # strategy.p.lp_buffer_mult,

@@ -824,13 +824,13 @@ class StochMACD(StrategyBase):
                 # If fast crosses slow downwards, trend reversal, sell
                 if did_reverse_down:
                     self.close_and_cancel_stops()
-                    self.log('INTERIM REVERSAL SELL, %.2f' % self.dataclose[0])
+                    self.log('INTERIM REVERSAL SELL, %.2f' % self.dataclose[0], send_telegram=True)
                     self.sell_with_stop_loss(price=close, multiplier=sizer_multiplier)   
             
             if should_sell:
                 if not within_upperrange:
                     self.close_and_cancel_stops()
-                self.log('REVERSAL SELL, %.2f' % self.dataclose[0])
+                self.log('REVERSAL SELL, %.2f' % self.dataclose[0], send_telegram=True)
                 self.sell_with_stop_loss(price=close, multiplier=sizer_multiplier)
                
         # Need to buy
@@ -839,22 +839,22 @@ class StochMACD(StrategyBase):
                 # If fast crosses slow upwards, trend reversal, buy
                 if did_reverse_up:
                     self.close_and_cancel_stops()
-                    self.log('INTERIM REVERSAL BUY, %.2f' % self.dataclose[0])
+                    self.log('INTERIM REVERSAL BUY, %.2f' % self.dataclose[0], send_telegram=True)
                     self.buy_with_stop_loss(price=close, multiplier=sizer_multiplier)
                     
             if should_buy:
                 if not within_lowerrange:
                     self.close_and_cancel_stops()
-                self.log('REVERSAL BUY, %.2f' % self.dataclose[0])
+                self.log('REVERSAL BUY, %.2f' % self.dataclose[0], send_telegram=True)
                 self.buy_with_stop_loss(price=close, multiplier=sizer_multiplier)
                 
         # if self.position.size == 0:
         else:
             if should_sell:
-                self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                self.log('SELL CREATE, %.2f' % self.dataclose[0], send_telegram=True)
                 self.sell_with_stop_loss(close, multiplier=sizer_multiplier)
             elif should_buy:
-                self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                self.log('BUY CREATE, %.2f' % self.dataclose[0], send_telegram=True)
                 self.buy_with_stop_loss(close, multiplier=sizer_multiplier)
 
 

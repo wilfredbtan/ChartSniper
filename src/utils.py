@@ -33,7 +33,9 @@ def reverse_and_clean(input_name, output_name):
 
 def get_trade_analysis(analyzer):
     # Get the results we are interested in
-    if not analyzer.get("total") or analyzer['total']['total'] == 0 or not isinstance(analyzer.pnl.net.total, float):
+    if (not analyzer.get("total") or 
+        analyzer['total']['total'] == 0 or 
+        not isinstance(analyzer.pnl.net.total, float)):
         return "No trades"
 
     total_open = analyzer.total.open

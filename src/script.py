@@ -17,6 +17,10 @@ bear_date='--fromdate 2021-02-03 --todate 2021-08-03'
 bull_date='--fromdate 2020-08-03 --todate 2021-02-03'
 # hourly range
 all_hourly_date='--fromdate 2020-08-03 --todate 2021-08-03'
+out_date='--fromdate 2020-11-20 --todate 2021-05-20'
+
+# dataset = '--dataset btc_hourly'
+dataset = '--dataset btc_futures_hourly'
 
 # cash = '--cash 1000'
 cash = '--cash 5000'
@@ -24,7 +28,7 @@ cash = '--cash 5000'
 cashperc = '--cashperc 50'
 
 # Buggy leverage
-macd = '--macd1 9 --macd2 21 --macdsig 8' # Does even better when shorts are divided by 2 and is buggy lol
+macd = '--macd1 9 --macd2 21 --macdsig 8' 
 # macd = '--macd1 8 --macd2 21 --macdsig 5' # Some youtuber lol. Does well when crabbing. Otherwise meh
 # macd = '--macd1 8 --macd2 21 --macdsig 9' # test
 # Top bear (NOPE)
@@ -33,6 +37,8 @@ macd = '--macd1 9 --macd2 21 --macdsig 8' # Does even better when shorts are div
 # macd = '--macd1 7 --macd2 18 --macdsig 7'
 # Top bull and all
 # macd = '--macd1 8 --macd2 21 --macdsig 9'
+# Futures
+# macd = '--macd1 7 --macd2 21 --macdsig 11' # Does even better when shorts are divided by 2 and is buggy lol
 
 atrdist = '--atrdist 5'
 # atrdist = '--atrdist 3'
@@ -49,7 +55,8 @@ leverage = '--leverage 5'
 # after this, negative or pnl goes down
 
 # reversal_sensitivity = '--reversal_sensitivity 20'
-reversal_sensitivity = '--reversal_sensitivity 17'
+# reversal_sensitivity = '--reversal_sensitivity 17'
+reversal_sensitivity = '--reversal_sensitivity 18' # Better for futures
 # reversal_sensitivity = '--reversal_sensitivity 16' #Higher SQN but lower PnL?
 # reversal_sensitivity = '--reversal_sensitivity 0'
 
@@ -58,20 +65,24 @@ reversal_sensitivity = '--reversal_sensitivity 17'
 # date = bull_date
 # date = all_hourly_date
 # date = all_minute_date
-# date = out_date
-date = ''
-
-# reversal_lowerband = '--reversal_lowerband 50'
-reversal_lowerband = '--reversal_lowerband 43'
-
-# reversal_upperband = '--reversal_upperband 50'
-reversal_upperband = '--reversal_upperband 48'
-
-rsi_upperband = '--rsi_upperband 45'
-# rsi_upperband = '--rsi_upperband 50'
+date = out_date
+# date = ''
 
 rsi_lowerband = '--rsi_lowerband 49'
 # rsi_lowerband = '--rsi_lowerband 50'
+# rsi_lowerband = '--rsi_lowerband 53'
+
+rsi_upperband = '--rsi_upperband 45'
+# rsi_upperband = '--rsi_upperband 50'
+# rsi_upperband = '--rsi_upperband 48'
+
+# reversal_lowerband = '--reversal_lowerband 50'
+reversal_lowerband = '--reversal_lowerband 43'
+# reversal_lowerband = '--reversal_lowerband 44'
+
+# reversal_upperband = '--reversal_upperband 50'
+reversal_upperband = '--reversal_upperband 48'
+# reversal_upperband = '--reversal_upperband 46'
 
 # lp_buffer_mult = '--lp_buffer_mult 1.54'
 lp_buffer_mult = '--lp_buffer_mult 6.5'
@@ -85,60 +96,98 @@ lp_buffer_mult = '--lp_buffer_mult 6.5'
 
 # Optimization
 # print("===== Short Bull (4 mths) =====")
-# os.system(f'python3 src/backtest.py -o {short_bull_date}')
-print("===== Bear =====")
-os.system(f'python3 src/backtest.py -o {bear_date}')
+# os.system(f'python3 src/backtest.py -o {dataset} {short_bull_date}')
+# print("===== Bear =====")
+# os.system(f'python3 src/backtest.py -o {dataset} {bear_date}')
 # print("===== Crab =====")
-# os.system(f'python3 src/backtest.py -o {crab_date}')
-print("===== Bull =====")
-os.system(f'python3 src/backtest.py -o {bull_date}')
-print("===== All =====")
-os.system(f'python3 src/backtest.py -o {all_hourly_date}')
-# print("===== Test =====")
+# os.system(f'python3 src/backtest.py -o {dataset} {crab_date}')
+# print("===== Bull =====")
+# os.system(f'python3 src/backtest.py -o {dataset} {bull_date}')
+# print("===== All =====")
+# os.system(f'python3 src/backtest.py -o {dataset} {all_hourly_date}')
+# print("===== Custom =====")
 # os.system(f'python3 src/backtest.py -o {date}')
 
 # Individual tests
 # print("===== Short Bull (4 mths) =====")
-# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
-# print("===== Bear =====")
-# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
+# os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {short_bull_date} {reversal_sensitivity}')
+print("===== Bear =====")
+os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bear_date} {reversal_sensitivity}')
 # print("===== Crab =====")
-# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
-# print("===== Bull =====")
-# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
-# print("===== All =====")
-# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {all_hourly_date} {reversal_sensitivity}')
-# print("===== Custom =====")
-# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
+# os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {crab_date} {reversal_sensitivity}')
+print("===== Bull =====")
+os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
+print("===== All =====")
+os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {all_hourly_date} {reversal_sensitivity}')
+print("===== Custom =====")
+os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
 
 # print("===== Multiple Runs =====")
-# os.system(f'python3 src/multiple_runs.py {lp_buffer_mult} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# os.system(f'python3 src/multiple_runs.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 # buffer_mult_range = [1.54, 7.5, 9.2, 10.4]
 # buffer_mult_range = [x * 0.1 for x in range(60, 70)]
 # for b in buffer_mult_range:
 #     buf_arg = f'--lp_buffer_mult {b}'
 #     print(buf_arg)
-#     os.system(f'python3 src/multiple_runs.py {buf_arg} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+#     os.system(f'python3 src/multiple_runs.py {dataset} {buf_arg} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
 ================ FUTURES =======================
+macd1=range(5, 13),
+macd2=range(15, 26),
+macdsig=range(9, 12),
+reversal_sensitivity=range(15, 20),
 ===== Bear =====
-[6.004570344501744, 13180.05, 14, 24, 9, 19]
-[6.004570344501744, 13180.05, 14, 25, 9, 19]
-[5.5952633879529525, 13483.94, 14, 24, 9, 17]
-[5.5952633879529525, 13483.94, 14, 24, 9, 18]
-[5.5952633879529525, 13483.94, 14, 25, 9, 17]
---- 426.30697083473206 seconds ---
-===== Crab =====
-[3.0902850343791233, 10551.6, 10, 24, 9, 18]
-[3.0902850343791233, 10551.6, 10, 24, 9, 19]
-[3.0902850343791233, 10551.6, 10, 25, 9, 18]
-[3.0902850343791233, 10551.6, 10, 25, 9, 19]
-[3.0902850343791233, 10551.6, 11, 22, 9, 18]
---- 452.1807978153229 seconds ---
+[1.038297222477949, 4399.34, 7, 21, 11, 18]
+[1.038297222477949, 4399.34, 7, 24, 10, 18]
+[1.038297222477949, 4399.34, 8, 16, 11, 18]
+[1.038297222477949, 4399.34, 8, 17, 11, 18]
+[1.038297222477949, 4399.34, 8, 18, 11, 18]
+--- 293.42787504196167 seconds ---
+===== Bull =====
+[1.2108029475600801, 5803.99, 12, 24, 11, 16]
+[1.2108029475600801, 5803.99, 12, 24, 11, 17]
+[1.2108029475600801, 5803.99, 12, 24, 11, 18]
+[1.2108029475600801, 5803.99, 12, 24, 11, 19]
+[1.2108029475600801, 5803.99, 12, 25, 11, 16]
+--- 312.6534399986267 seconds ---
+===== All =====
+[1.4573170200602168, 71701.14, 7, 21, 11, 18]
+[1.4573170200602168, 71701.14, 7, 24, 10, 18]
+[1.4573170200602168, 71701.14, 8, 16, 11, 18]
+[1.4573170200602168, 71701.14, 8, 17, 11, 18]
+[1.4573170200602168, 71701.14, 8, 18, 11, 18]
+--- 278.53206276893616 seconds ---
 
-================ FUTURES =======================
+---- Optimize rsi upper and lower band ----
+
+===== Bear =====
+[1.0389714398289858, 4410.11, 7, 21, 11, 18, 53, 48, 47, 40]
+[1.0389714398289858, 4410.11, 7, 21, 11, 18, 53, 48, 47, 41]
+[1.0389714398289858, 4410.11, 7, 21, 11, 18, 53, 48, 47, 42]
+[1.0389714398289858, 4410.11, 7, 21, 11, 18, 53, 48, 47, 43]
+[1.0389714398289858, 4410.11, 7, 21, 11, 18, 53, 48, 47, 44]
+--- 24.45235300064087 seconds ---
+===== Bull =====
+[0.7651062598326183, 8718.54, 7, 21, 11, 18, 53, 48, 44, 46]
+[0.7651062598326183, 8718.54, 7, 21, 11, 18, 53, 48, 44, 47]
+[0.7651062598326183, 8718.54, 7, 21, 11, 18, 53, 48, 44, 48]
+[0.7651062598326183, 8718.54, 7, 21, 11, 18, 53, 48, 44, 49]
+[0.7651062598326183, 8718.54, 7, 21, 11, 18, 53, 48, 44, 50]
+--- 24.59843897819519 seconds ---
+===== All =====
+[1.4900843950066234, 60863.58, 7, 21, 11, 18, 53, 48, 44, 46]
+[1.4900843950066234, 60863.58, 7, 21, 11, 18, 53, 48, 44, 47]
+[1.4900843950066234, 60863.58, 7, 21, 11, 18, 53, 48, 44, 48]
+[1.4900843950066234, 60863.58, 7, 21, 11, 18, 53, 48, 44, 49]
+[1.4900843950066234, 60863.58, 7, 21, 11, 18, 53, 48, 44, 50]
+--- 48.04954504966736 seconds ---
+
+================ ^ FUTURES ^ =======================
+
+
+
 ### Multiple run LP_BUFFER = [x * 0.1 for x in range(70, 80)]
 # BEST
 1st of each month

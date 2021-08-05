@@ -46,12 +46,17 @@ logger = get_formatted_logger(
 def run_test(args=None):
     args = parse_args(args)
 
-    test_period = 12
+    # test_period = 12
+    # step = 1
+    # start_sample_date = dt.datetime(2017,9,15)
+    # end_sample_date = dt.datetime(2021,6,15)
+    # current_sample_date = start_sample_date
+    # cash = 5000
+    test_period = 6
     step = 1
-    start_sample_date = dt.datetime(2017,9,15)
-    end_sample_date = dt.datetime(2021,6,15)
+    start_sample_date = dt.datetime(2020,8,3)
+    end_sample_date = dt.datetime(2021,8,3)
     current_sample_date = start_sample_date
-    dataset = 'btc_hourly'
     cash = 5000
 
     count = 0
@@ -66,7 +71,7 @@ def run_test(args=None):
 
         result = run_strategy(
             strategy=StochMACD, 
-            dataset=dataset,
+            dataset=args.dataset,
             fromdate=in_period[0],
             todate=in_period[1],
             cash=cash,
