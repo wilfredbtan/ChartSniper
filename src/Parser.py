@@ -8,7 +8,7 @@ def parse_args(pargs=None):
         description='Stochastic RSI with MACD Crossover Strategy')
 
     parser.add_argument('--dataset', required=False, action='store',
-                        default='btc_hourly', choices=DATASETS.keys(),
+                        default='btc_futures_hourly', choices=DATASETS.keys(),
                         help='Choose one of the predefined data sets')
 
     parser.add_argument('--dataset2', required=False, action='store',

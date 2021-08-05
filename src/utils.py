@@ -28,11 +28,12 @@ def reverse_and_clean(input_name, output_name):
     df.set_index('datetime', inplace=True)
     df.to_csv(output_name)
 
-# reverse_and_clean(input_name='./crypto/Binance_BTCUSDT_minute.csv', output_name='./crypto/reversed_BTC_minute.csv')
+# filename = 'binance_BTCUSDT_1h.csv'
+# reverse_and_clean(input_name=f'./src/crypto/{filename}', output_name=f'./src/crypto/reversed_{filename}')
 
 def get_trade_analysis(analyzer):
     # Get the results we are interested in
-    if not analyzer.get("total") or analyzer['total']['total'] == 0:
+    if not analyzer.get("total") or analyzer['total']['total'] == 0 or not isinstance(analyzer.pnl.net.total, float):
         return "No trades"
 
     total_open = analyzer.total.open

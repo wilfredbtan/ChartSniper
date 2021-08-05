@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /
+    destination: /home/bots
 hooks:
   BeforeInstall:
     - location: scripts/install_instance_dependencies.sh

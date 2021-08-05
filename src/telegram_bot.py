@@ -107,7 +107,7 @@ class Telegram_Bot:
         # update.message.reply_text('== Starting Chart Sniper ==')
         txt = '<b>== Starting Chart Sniper ==</b>'
         context.bot.send_message(chat_id=TELEGRAM.get("chat_id"), text=txt, parse_mode=ParseMode.HTML)
-        self.chart_sniper = subprocess.Popen(['python3','live.py'])
+        self.chart_sniper = subprocess.Popen(['python3','src/live.py'])
 
     def stop(self, update, context):
         '''Stops Chart Sniper'''
@@ -132,7 +132,15 @@ class Telegram_Bot:
             f'<pre>{html.escape(tb_string)}</pre>'
         )
 
-        context.bot.send_message(chat_id=TELEGRAM.get("chat_id"), text=message, parse_mode=ParseMode.HTML)
+        if len(message) > 4096:
+            for x in range(0, len(message), 4096):
+                # bot.send_message(message.chat.id, message[x:x+4096])
+                context.bot.send_message(chat_id=TELEGRAM.get("chat_id"), text=message[x:x+4096], parse_mode=ParseMode.HTML)
+        else:
+            # bot.send_message(message.chat.id, message)
+            context.bot.send_message(chat_id=TELEGRAM.get("chat_id"), text=message, parse_mode=ParseMode.HTML)
+
+        # context.bot.send_message(chat_id=TELEGRAM.get("chat_id"), text=message, parse_mode=ParseMode.HTML)
 
     def send_message(self, text):
         """Send message to the user"""

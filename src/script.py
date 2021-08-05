@@ -1,14 +1,24 @@
 import os
 
-short_bull_date='--fromdate 2017-8-18 --todate 2018-12-18'
-bear_date='--fromdate 2018-2-1 --todate 2019-2-1'
-crab_date='--fromdate 2019-5-12 --todate 2020-5-12'
-bull_date='--fromdate 2020-6-9 --todate 2021-6-9'
-# 1 minute range
-all_minute_date='--fromdate 2019-9-9 --todate 2021-6-9'
-# hourly range
-all_hourly_date='--fromdate 2017-8-18 --todate 2021-6-9'
+'''BTCUSDT'''
+# short_bull_date='--fromdate 2017-8-18 --todate 2018-12-18'
+# bear_date='--fromdate 2018-2-1 --todate 2019-2-1'
+# crab_date='--fromdate 2019-5-12 --todate 2020-5-12'
+# bull_date='--fromdate 2020-6-9 --todate 2021-6-9'
+# # 1 minute range
+# all_minute_date='--fromdate 2019-9-9 --todate 2021-6-9'
+# # hourly range
+# all_hourly_date='--fromdate 2017-8-18 --todate 2021-6-9'
+# out_date='--fromdate 2021-7-20 --todate 2021-8-4'
 
+'''BTCUSDT FUTURES'''
+bear_date='--fromdate 2021-02-03 --todate 2021-08-03'
+# crab_date='--fromdate 2019-5-12 --todate 2020-5-12'
+bull_date='--fromdate 2020-08-03 --todate 2021-02-03'
+# hourly range
+all_hourly_date='--fromdate 2020-08-03 --todate 2021-08-03'
+
+# cash = '--cash 1000'
 cash = '--cash 5000'
 
 cashperc = '--cashperc 50'
@@ -46,9 +56,10 @@ reversal_sensitivity = '--reversal_sensitivity 17'
 # date = bear_date
 # date = crab_date
 # date = bull_date
-date = all_hourly_date
+# date = all_hourly_date
 # date = all_minute_date
-# date = ''
+# date = out_date
+date = ''
 
 # reversal_lowerband = '--reversal_lowerband 50'
 reversal_lowerband = '--reversal_lowerband 43'
@@ -64,6 +75,8 @@ rsi_lowerband = '--rsi_lowerband 49'
 
 # lp_buffer_mult = '--lp_buffer_mult 1.54'
 lp_buffer_mult = '--lp_buffer_mult 6.5'
+# lp_buffer_mult = '--lp_buffer_mult 6.8'
+# lp_buffer_mult = '--lp_buffer_mult 7'
 # lp_buffer_mult = '--lp_buffer_mult 7.5'
 # lp_buffer_mult = '--lp_buffer_mult 8.5'
 # lp_buffer_mult = '--lp_buffer_mult 10'
@@ -75,8 +88,8 @@ lp_buffer_mult = '--lp_buffer_mult 6.5'
 # os.system(f'python3 src/backtest.py -o {short_bull_date}')
 print("===== Bear =====")
 os.system(f'python3 src/backtest.py -o {bear_date}')
-print("===== Crab =====")
-os.system(f'python3 src/backtest.py -o {crab_date}')
+# print("===== Crab =====")
+# os.system(f'python3 src/backtest.py -o {crab_date}')
 print("===== Bull =====")
 os.system(f'python3 src/backtest.py -o {bull_date}')
 print("===== All =====")
@@ -94,7 +107,7 @@ os.system(f'python3 src/backtest.py -o {all_hourly_date}')
 # print("===== Bull =====")
 # os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {bull_date} {reversal_sensitivity}')
 # print("===== All =====")
-# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
+# os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {all_hourly_date} {reversal_sensitivity}')
 # print("===== Custom =====")
 # os.system(f'python3 src/backtest.py {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
 
@@ -109,6 +122,23 @@ os.system(f'python3 src/backtest.py -o {all_hourly_date}')
 #     os.system(f'python3 src/multiple_runs.py {buf_arg} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
 
 '''
+================ FUTURES =======================
+===== Bear =====
+[6.004570344501744, 13180.05, 14, 24, 9, 19]
+[6.004570344501744, 13180.05, 14, 25, 9, 19]
+[5.5952633879529525, 13483.94, 14, 24, 9, 17]
+[5.5952633879529525, 13483.94, 14, 24, 9, 18]
+[5.5952633879529525, 13483.94, 14, 25, 9, 17]
+--- 426.30697083473206 seconds ---
+===== Crab =====
+[3.0902850343791233, 10551.6, 10, 24, 9, 18]
+[3.0902850343791233, 10551.6, 10, 24, 9, 19]
+[3.0902850343791233, 10551.6, 10, 25, 9, 18]
+[3.0902850343791233, 10551.6, 10, 25, 9, 19]
+[3.0902850343791233, 10551.6, 11, 22, 9, 18]
+--- 452.1807978153229 seconds ---
+
+================ FUTURES =======================
 ### Multiple run LP_BUFFER = [x * 0.1 for x in range(70, 80)]
 # BEST
 1st of each month
@@ -389,7 +419,7 @@ TRADES:
     std:  4.34
 
 
-### CMF 
+### CMF
 cmf_upperband=range(2,9),
 cmf_lowerband=range(-20,-9),
 
@@ -423,7 +453,7 @@ Avg trades:  23.52
 --- 50.27589416503906 seconds ---
 
 
-### RSI upper and lowerband: 
+### RSI upper and lowerband:
 ===== All Hourly =====
 (40, 55): RSI > upperband ; RSI < lowerband
 [1.139936767238418, 485637.1, 46, 48]

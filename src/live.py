@@ -1,5 +1,6 @@
 import logging
 import time
+import ccxt
 import datetime as dt
 import backtrader as bt
 
@@ -101,15 +102,15 @@ def main():
         broker = store.getbroker(broker_mapping=broker_mapping)
         cerebro.setbroker(broker)
 
-        # hist_start_date = dt.datetime.utcnow() - dt.timedelta(hours=1000)
-        hist_start_date = dt.datetime.utcnow() - dt.timedelta(minutes=1000)
+        hist_start_date = dt.datetime.utcnow() - dt.timedelta(hours=1000)
+        # hist_start_date = dt.datetime.utcnow() - dt.timedelta(minutes=1000)
         data = store.getdata(
             dataname=symbol,
             name=market['id'],
             timeframe=bt.TimeFrame.Minutes,
             fromdate=hist_start_date,
-            # compression=60,
-            compression=5,
+            compression=60,
+            # compression=5,
             # Max number of ticks before throttling occurs
             ohlcv_limit=999,
             # ohlcv_limit=500,
@@ -159,7 +160,7 @@ def main():
     #     reversal_lowerband=43,
     #     reversal_upperband=48,
     #     leverage=leverage,
-    #     lp_buffer_mult=7.5,
+    #     lp_buffer_mult=6.5,
     #     default_loglevel=loglevel,
     #     filename=filename,
     #     should_save=should_save
@@ -180,15 +181,15 @@ def main():
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
-    cerebro.addsizer(PercValue, perc=cashperc, min_size=0.0001)
+    cerebro.addsizer(PercValue, perc=cashperc, min_size=0.001)
     # cerebro.addsizer(bt.sizers.FixedSize, stake=1)
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()
 
-    datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
+    start_dt_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
     chart_sniper_init_txt = "== Chart Sniper initialized =="
-    date_txt = f"Date: {datetime_str}"
+    date_txt = f"Date: {start_dt_str}"
     starting_port_val_txt = f"Starting Portfolio Value: {initial_value: .2f}"
 
     logger.info(chart_sniper_init_txt)
@@ -218,10 +219,11 @@ def main():
     if ENV == PRODUCTION:
         telegram_txt = f"```\n{final_value_string}\n{profit_string}\n{ta_string}\n{sqn_string}```"
 
-        datetime_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
-        logger.info("Chart Sniper finished by user on %s" % datetime_str)
+        end_dt_str = dt.datetime.now().strftime('%d %b %Y %H:%M:%S')
+        date_txt = f"Chart Sniper finished by user.\nStart Date: {start_dt_str}\nEnd Date: {end_dt_str}"
+        logger.info(date_txt)
         send_telegram_message(telegram_txt, parse_mode=ParseMode.MARKDOWN)
-        send_telegram_message("Bot finished by user on %s" % datetime_str)
+        send_telegram_message(date_txt)
 
 
     # if DEBUG:

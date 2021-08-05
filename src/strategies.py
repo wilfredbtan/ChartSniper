@@ -4,6 +4,7 @@ import signal
 import collections
 import bisect
 import time
+import ccxt
 import backtrader as bt
 
 from telegram import ParseMode
@@ -38,10 +39,13 @@ class StrategyBase(bt.Strategy):
         # Portfolio value
         # open positions (if any)
         # Trade analysis?
-        value_string = f'Portfolio value: {self.broker.getvalue(): .2f}'
-        position_string = f'Postion:\n  Size: {self.position.size: .3f}\n  Price: {self.position.price}'
+        start_val_str = f'Starting Portfolio: {self.starting_value: .2f}'
+        curr_val = self.broker.getvalue()
+        curr_val_str = f'Current Portfolio: {curr_val: .2f}'
+        pnl_str = f'PnL: {curr_val - self.starting_value: .2f}'
+        position_str = f'Open Position:\n  Size: {self.position.size: .3f}\n  Price: {self.position.price: .4f}'
         ta_string = get_trade_analysis(self.analyzers.ta.get_analysis())
-        txt = f'```\n{value_string}\n\n{position_string}\n\n{ta_string}```'
+        txt = f'```\n{start_val_str}\n{curr_val_str}\n{pnl_str}\n\n{position_str}\n\n{ta_string}```'
         print(txt)
         if ENV == PRODUCTION:
             send_telegram_message(message=txt, parse_mode=ParseMode.MARKDOWN)
@@ -55,6 +59,8 @@ class StrategyBase(bt.Strategy):
 
         signal.signal(signal.SIGINT, self.handle_sigint)
         signal.signal(signal.SIGUSR1, self.handle_sigusr1)
+
+        self.starting_value = self.broker.getvalue()
 
         self.order = None
         self.status = "DISCONNECTED"
@@ -351,11 +357,19 @@ class StrategyBase(bt.Strategy):
             self.stop_orders = {}
     
     def sell_with_stop_loss(self, price, size=None, multiplier=1, **kwargs):
-        # sell_order = self.sell(size=size, transmit=False, kwargs=kwargs)
-        sell_order = self.sell(size=size, kwargs=kwargs)
-        sell_order.addinfo(name="ENTRY SHORT Order")
-        sell_order.addinfo(should_stop=True)
-        # self.submit_stop_for_sell(price, size=sell_order.size, parent=sell_order)
+        # sell_order = self.sell(size=size, kwargs=kwargs)
+        # sell_order.addinfo(name="ENTRY SHORT Order")
+        # sell_order.addinfo(should_stop=True)
+
+        try:
+            sell_order = self.sell(size=size, kwargs=kwargs)
+            sell_order.addinfo(name="ENTRY SHORT Order")
+            sell_order.addinfo(should_stop=True)
+        except ccxt.InsufficientFunds as err:
+            err_msg = f"*[Sell order] Insufficient fund error received: {err}*"
+            self.log(err_msg, send_telegram=True)
+            # send_telegram_message(err_msg, parse_mode=ParseMode.MARKDOWN)
+            pass
 
     def submit_stop_for_sell(self, price, size, parent=None):
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
@@ -377,8 +391,6 @@ class StrategyBase(bt.Strategy):
             size=size, 
             price=stop_price, 
             stopPrice=stop_price,
-            # parent=parent, 
-            # transmit=True,
             #Binance
             reduceOnly='true'
         )
@@ -391,12 +403,21 @@ class StrategyBase(bt.Strategy):
 
         
     def buy_with_stop_loss(self, price, size=None, multiplier=1, **kwargs):
-        # buy_order = self.buy(size=size, transmit=False, kwargs=kwargs)
-        buy_order = self.buy(size=size, kwargs=kwargs)
-        # Kwargs do not work in bt-ccxt
-        buy_order.addinfo(name="ENTRY LONG Order")
-        buy_order.addinfo(should_stop=True)
-        # self.submit_stop_for_buy(price, size=buy_order.size, parent=buy_order)
+        # buy_order = self.buy(size=size, kwargs=kwargs)
+        # # Kwargs do not work in bt-ccxt
+        # buy_order.addinfo(name="ENTRY LONG Order")
+        # buy_order.addinfo(should_stop=True)
+
+        try:
+            buy_order = self.buy(size=size, kwargs=kwargs)
+            # Kwargs do not work in bt-ccxt
+            buy_order.addinfo(name="ENTRY LONG Order")
+            buy_order.addinfo(should_stop=True)
+        except ccxt.InsufficientFunds as err:
+            err_msg = f"*[Buy order] Insufficient fund error received: {err}*"
+            self.log(err_msg, send_telegram=True)
+            # send_telegram_message(err_msg, parse_mode=ParseMode.MARKDOWN)
+            pass
 
     def submit_stop_for_buy(self, price, size, parent=None):
         atrdist = self.params_to_use['atrdist'] if self.p.isWfa else self.p.atrdist
@@ -420,8 +441,6 @@ class StrategyBase(bt.Strategy):
             size=size,
             price=stop_price,
             stopPrice=stop_price,
-            # parent=parent,
-            # transmit=True,
             #Binance
             reduceOnly='true'
         )
@@ -533,37 +552,39 @@ class TESTBUY(StrategyBase):
 
         print("LIVE NEXT")
 
-        if self.position.size < 0:
-            self.log("buy in testbuy", color='yellow')
-            self.close_and_cancel_stops()
-            self.buy_with_stop_loss(close)
+        self.buy_with_stop_loss(close)
 
-            # Bitfinex derivative market buy
-            # self.buy_stop_loss(close, type="MARKET", lev=self.p.leverage)
-            # self.buy(type='MARKET', lev=self.p.leverage)
-            # Btifnex V1
-            # self.buy(type='market', lev=str(self.p.leverage))
-        elif self.position.size > 0:
-            self.log("sell in testbuy", color='yellow')
-            self.close_and_cancel_stops()
-            self.sell_with_stop_loss(close)
+        # if self.position.size < 0:
+        #     self.log("buy in testbuy", color='yellow')
+        #     self.close_and_cancel_stops()
+        #     self.buy_with_stop_loss(close)
 
-            # Bitfinex derivative market sell
-            # self.sell_stop_loss(close, type="MARKET", lev=self.p.leverage)
-            # self.sell(type='MARKET', lev=self.p.leverage)
+        #     # Bitfinex derivative market buy
+        #     # self.buy_stop_loss(close, type="MARKET", lev=self.p.leverage)
+        #     # self.buy(type='MARKET', lev=self.p.leverage)
+        #     # Btifnex V1
+        #     # self.buy(type='market', lev=str(self.p.leverage))
+        # elif self.position.size > 0:
+        #     self.log("sell in testbuy", color='yellow')
+        #     self.close_and_cancel_stops()
+        #     self.sell_with_stop_loss(close)
 
-            # Btifnex V1
-            # self.sell(type='market', lev=str(self.p.leverage))
-        else:
-            self.log("STARTING in testbuy", color='yellow')
-            self.buy_with_stop_loss(close)
+        #     # Bitfinex derivative market sell
+        #     # self.sell_stop_loss(close, type="MARKET", lev=self.p.leverage)
+        #     # self.sell(type='MARKET', lev=self.p.leverage)
 
-            # Bitfinex derivative market buy
-            # self.buy_stop_loss(close, type="MARKET", lev=self.p.leverage)
-            # self.buy(type='MARKET', lev=self.p.leverage)
+        #     # Btifnex V1
+        #     # self.sell(type='market', lev=str(self.p.leverage))
+        # else:
+        #     self.log("STARTING in testbuy", color='yellow')
+        #     self.buy_with_stop_loss(close)
 
-            # Btifnex V1
-            # self.buy(type='market', lev=str(self.p.leverage))
+        #     # Bitfinex derivative market buy
+        #     # self.buy_stop_loss(close, type="MARKET", lev=self.p.leverage)
+        #     # self.buy(type='MARKET', lev=self.p.leverage)
+
+        #     # Btifnex V1
+        #     # self.buy(type='market', lev=str(self.p.leverage))
 
 class StochMACD(StrategyBase):
     # list of parameters which are configurable for the strategy
@@ -765,18 +786,43 @@ class StochMACD(StrategyBase):
 
         reversal_sensitivity = self.p.reversal_sensitivity
 
+        within_upperrange = currentStochRSI > self.p.reversal_upperband and currentStochRSI < self.p.stoch_upperband
+        did_reverse_down = (
+            self.stochrsi.l.fastk[-2] > self.stochrsi.l.fastd[-2] and
+            self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and
+            (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity
+        )
+        within_lowerrange = currentStochRSI > self.p.stoch_lowerband and currentStochRSI < self.p.reversal_lowerband
+        did_reverse_up = (
+            self.stochrsi.l.fastk[-2] < self.stochrsi.l.fastd[-2] and
+            self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and
+            (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity
+        )
+
+
+        # print("=================")
+        # print("d0 OHLC: ", self.datas[0].datetime.datetime(), self.datas[0].open[0], self.datas[0].high[0], self.datas[0].low[0], self.datas[0].close[0])
+        # print(f"position.size: {self.position.size}")
+        # print("============== ")
+        # print(f"(self.mcross[0] > 0 or self.mcross[-1] > 0): {(self.mcross[0] > 0 or self.mcross[-1] > 0)}")
+        # print(f"rsi_should_buy: {rsi_should_buy}")
+        # print(f"did_rsi_crossup: {did_stochrsi_crossup}")
+        # print(f"== should_buy: {should_buy}")
+        # print(f"== within_lowerrange: {within_lowerrange}")
+        # print(f"== did_reverse_up: {did_reverse_up}")
+        # print("-----")
+        # print(f"(self.mcross[0] < 0 or self.mcross[-1] < 0): {(self.mcross[0] < 0 or self.mcross[-1] < 0)}")
+        # print(f"rsi_should_sell: {rsi_should_sell}")
+        # print(f"did_rsi_crossdown: {did_stochrsi_crossdown}")
+        # print(f"== should_sell: {should_sell}")
+        # print(f"== within_upperrange: {within_upperrange}")
+        # print(f"== did_reverse_down: {did_reverse_down}")
+
         # Need to sell
         if self.position.size > 0:
-            within_upperrange = currentStochRSI > self.p.reversal_upperband and currentStochRSI < self.p.stoch_upperband
-            did_reverse = (
-                self.stochrsi.l.fastk[-2] > self.stochrsi.l.fastd[-2] and
-                self.stochrsi.l.fastk[-1] > self.stochrsi.l.fastd[-1] and
-                (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) <= -reversal_sensitivity
-            )
-
             if within_upperrange:
                 # If fast crosses slow downwards, trend reversal, sell
-                if did_reverse:
+                if did_reverse_down:
                     self.close_and_cancel_stops()
                     self.log('INTERIM REVERSAL SELL, %.2f' % self.dataclose[0])
                     self.sell_with_stop_loss(price=close, multiplier=sizer_multiplier)   
@@ -789,16 +835,9 @@ class StochMACD(StrategyBase):
                
         # Need to buy
         elif self.position.size < 0:
-            within_lowerrange = currentStochRSI > self.p.stoch_lowerband and currentStochRSI < self.p.reversal_lowerband
-            did_reverse = (
-                self.stochrsi.l.fastk[-2] < self.stochrsi.l.fastd[-2] and
-                self.stochrsi.l.fastk[-1] < self.stochrsi.l.fastd[-1] and
-                (self.stochrsi.l.fastk[0] - self.stochrsi.l.fastd[0]) >= reversal_sensitivity
-            )
-
             if within_lowerrange:
                 # If fast crosses slow upwards, trend reversal, buy
-                if did_reverse:
+                if did_reverse_up:
                     self.close_and_cancel_stops()
                     self.log('INTERIM REVERSAL BUY, %.2f' % self.dataclose[0])
                     self.buy_with_stop_loss(price=close, multiplier=sizer_multiplier)
@@ -811,13 +850,13 @@ class StochMACD(StrategyBase):
                 
         # if self.position.size == 0:
         else:
-            if should_buy:
+            if should_sell:
+                self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                self.sell_with_stop_loss(close, multiplier=sizer_multiplier)
+            elif should_buy:
                 self.log('BUY CREATE, %.2f' % self.dataclose[0])
                 self.buy_with_stop_loss(close, multiplier=sizer_multiplier)
 
-            elif should_sell:
-                self.log('SELL CREATE, %.2f' % self.dataclose[0])
-                self.sell_with_stop_loss(close, multiplier=sizer_multiplier)
 
 
 class WfaStochMACD(StrategyBase):

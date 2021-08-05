@@ -8,7 +8,7 @@ PRODUCTION = "production"
 DEVELOPMENT = "development"
 
 SANDBOX = True
-ENV = os.getenv("ENVIRONMENT", PRODUCTION)
+ENV = os.getenv("ENVIRONMENT", DEVELOPMENT)
 DEBUG = True
 
 '''

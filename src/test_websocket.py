@@ -25,6 +25,8 @@ def main():
     # twm.start_depth_socket(callback=handle_socket_message, symbol=symbol)
 
     twm.start()
+    # Fix needed to use testnet for futures_socket
+    # https://github.com/sammchardy/python-binance/issues/929
     twm.start_futures_socket(
         callback=handle_socket_message, 
     )

@@ -1,4 +1,4 @@
 DATASETS = {
-    'btc_hourly': './crypto/reversed_BTC_1h.csv',
-    'btc_minute': './crypto/reversed_BTC_minute.csv',
+    'btc_hourly': './src/crypto/reversed_binance_BTCUSDT_1h.csv',
+    'btc_futures_hourly': './src/crypto/reversed_binance_futures_BTCUSDT_1h.csv',
 }

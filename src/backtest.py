@@ -49,7 +49,7 @@ def main(args=None):
 
     cerebro.broker.set_shortcash(False)
     cerebro.broker.set_cash(args.cash)
-    cerebro.addsizer(PercValue, perc=args.cashperc, min_size=0.0001)
+    cerebro.addsizer(PercValue, perc=args.cashperc, min_size=0.001)
     futures_perc = CommInfo_Futures_Perc(commission=0.04, leverage=args.leverage)
     cerebro.broker.addcommissioninfo(futures_perc)
 
@@ -100,12 +100,12 @@ def main(args=None):
     if args.optimize:
 
         cerebro.optstrategy(StochMACD, 
-            # macd1=range(7, 15),
-            # macd2=range(18, 26),
-            # macdsig=range(7, 10),
-            macd1=9,
-            macd2=21,
-            macdsig=8,
+            macd1=range(5, 15),
+            macd2=range(10, 26),
+            macdsig=range(5, 15),
+            # macd1=9,
+            # macd2=21,
+            # macdsig=8,
 
             # macd1=10,
             # macd2=16,
@@ -114,8 +114,8 @@ def main(args=None):
             # atrdist=range(1,15),
             atrdist=5,
 
-            # reversal_sensitivity=range(5, 20),
-            reversal_sensitivity=17,
+            reversal_sensitivity=range(10, 20),
+            # reversal_sensitivity=17,
 
             # rsi_upperband=range(40,55),
             # rsi_lowerband=range(40,55),
@@ -134,8 +134,9 @@ def main(args=None):
             # leverage=(1,125),
             leverage=5,
 
+            lp_buffer_mult=6.5,
             # lp_buffer_mult=[x * 0.01 for x in range(100, 200)],
-            lp_buffer_mult=[x * 0.1 for x in range(0, 200)],
+            # lp_buffer_mult=[x * 0.1 for x in range(0, 200)],
 
             isWfa=False,
         )
@@ -160,10 +161,10 @@ def main(args=None):
                         sqn['sqn'],
                         PnL, 
                         # strategy.p.atrdist,
-                        # strategy.p.macd1, 
-                        # strategy.p.macd2, 
-                        # strategy.p.macdsig, 
-                        # strategy.p.reversal_sensitivity, 
+                        strategy.p.macd1, 
+                        strategy.p.macd2, 
+                        strategy.p.macdsig, 
+                        strategy.p.reversal_sensitivity, 
                         # strategy.p.reversal_lowerband,
                         # strategy.p.reversal_upperband,
                         # strategy.p.leverage, 
@@ -171,7 +172,7 @@ def main(args=None):
                         # strategy.p.rsi_lowerband,
                         # strategy.p.cmf_upperband,
                         # strategy.p.cmf_lowerband,
-                        strategy.p.lp_buffer_mult,
+                        # strategy.p.lp_buffer_mult,
                     ]
                 )
         sort_by_analyzer = sorted(final_results_list, key=lambda x: x[0], reverse=True)
