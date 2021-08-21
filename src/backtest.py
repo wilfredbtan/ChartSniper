@@ -19,12 +19,12 @@ save_directory = "dev_logs"
 datetime_str = datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
 filename = f'{save_directory}/{datetime_str}'
 
-logger = get_formatted_logger(
-    logger_name="chart_sniper", 
-    level=logging.CRITICAL,
-    filename=filename,
-    should_save=False
-)
+# logger = get_formatted_logger(
+#     logger_name="chart_sniper", 
+#     level=logging.CRITICAL,
+#     filename=filename,
+#     should_save=False
+# )
 
 def main(args=None):
     global logger
@@ -33,12 +33,12 @@ def main(args=None):
     if args.save:
         create_dir(save_directory)
 
-    # logger = get_formatted_logger(
-    #     logger_name="chart_sniper", 
-    #     level=args.loglevel, 
-    #     filename=filename,
-    #     should_save=args.save
-    # )
+    logger = get_formatted_logger(
+        logger_name="chart_sniper", 
+        level=args.loglevel, 
+        filename=filename,
+        should_save=args.save
+    )
 
     if ENV == PRODUCTION:
         logger.warning("Running backtest in production mode!")

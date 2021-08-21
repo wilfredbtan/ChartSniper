@@ -148,31 +148,31 @@ def main():
     loglevel = logging.INFO if ENV == PRODUCTION else logging.DEBUG
 
     # Include Strategy
-    # cerebro.addstrategy(
-    #     StochMACD,
-    #     macd1=9,
-    #     macd2=21,
-    #     macdsig=8,
-    #     atrdist=5,
-    #     reversal_sensitivity=18,
-    #     rsi_lowerband=49,
-    #     rsi_upperband=45,
-    #     reversal_lowerband=43,
-    #     reversal_upperband=48,
-    #     leverage=leverage,
-    #     lp_buffer_mult=6.5,
-    #     default_loglevel=loglevel,
-    #     filename=filename,
-    #     should_save=should_save
-    # )
-
     cerebro.addstrategy(
-        TESTBUY, 
-        leverage=leverage, 
+        StochMACD,
+        macd1=9,
+        macd2=21,
+        macdsig=8,
+        atrdist=5,
+        reversal_sensitivity=18,
+        rsi_lowerband=49,
+        rsi_upperband=45,
+        reversal_lowerband=43,
+        reversal_upperband=48,
+        leverage=leverage,
+        lp_buffer_mult=6.5,
+        default_loglevel=loglevel,
         filename=filename,
-        should_save=should_save,
-        default_loglevel=loglevel, 
+        should_save=should_save
     )
+
+    # cerebro.addstrategy(
+    #     TESTBUY, 
+    #     leverage=leverage, 
+    #     filename=filename,
+    #     should_save=should_save,
+    #     default_loglevel=loglevel, 
+    # )
 
     futures_perc = CommInfo_Futures_Perc(commission=commission, leverage=leverage)
     cerebro.broker.addcommissioninfo(futures_perc)

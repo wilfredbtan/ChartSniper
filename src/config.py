@@ -7,31 +7,25 @@ load_dotenv()
 PRODUCTION = "production"
 DEVELOPMENT = "development"
 
-SANDBOX = True
-ENV = os.getenv("ENVIRONMENT", DEVELOPMENT)
+SANDBOX = False
+ENV = os.getenv("ENVIRONMENT", PRODUCTION)
 DEBUG = True
 
 '''
 BINANCE
 '''
-# PROD_BINANCE_API_KEY=os.environ.get("PROD_BINANCE_API_KEY")
-# PROD_BINANCE_SECRET=os.environ.get("PROD_BINANCE_SECRET")
+PROD_BINANCE_FUTURE_API_KEY=os.environ.get("PROD_BINANCE_API_KEY")
+PROD_BINANCE_FUTURE_SECRET=os.environ.get("PROD_BINANCE_SECRET")
 
-# BINANCE = {
-#   "key": PROD_BINANCE_API_KEY,
-#   "secret": PROD_BINANCE_SECRET
-# }
-
-# COIN_TARGET = "BTC"
-# COIN_REFER = "USDT"
-
-TEST_BINANCE_FUTURE_API_KEY=os.environ.get("TEST_BINANCE_FUTURE_API_KEY")
-TEST_BINANCE_FUTURE_SECRET=os.environ.get("TEST_BINANCE_FUTURE_SECRET")
+# TEST_BINANCE_FUTURE_API_KEY=os.environ.get("TEST_BINANCE_FUTURE_API_KEY")
+# TEST_BINANCE_FUTURE_SECRET=os.environ.get("TEST_BINANCE_FUTURE_SECRET")
 
 BINANCE = {
     "name": "binanceusdm",
-    "key": TEST_BINANCE_FUTURE_API_KEY,
-    "secret": TEST_BINANCE_FUTURE_SECRET,
+    # "key": TEST_BINANCE_FUTURE_API_KEY,
+    # "secret": TEST_BINANCE_FUTURE_SECRET,
+    "key": PROD_BINANCE_FUTURE_API_KEY,
+    "secret": PROD_BINANCE_FUTURE_SECRET,
     "coin_target": "BTC",
     "coin_refer": "USDT",
     "order_type_mapping": {

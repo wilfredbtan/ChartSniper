@@ -120,7 +120,7 @@ os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc}
 print("===== All =====")
 os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {all_hourly_date} {reversal_sensitivity}')
 print("===== Custom =====")
-os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date} -d')
+os.system(f'python3 src/backtest.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {rsi_upperband} {rsi_lowerband} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity} {date}')
 
 # print("===== Multiple Runs =====")
 # os.system(f'python3 src/multiple_runs.py {dataset} {lp_buffer_mult} {cash} {cashperc} {macd} {reversal_lowerband} {reversal_upperband} {atrdist} {leverage} {reversal_sensitivity}')
